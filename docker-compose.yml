@@ -1,0 +1,129 @@
+# Project NEXUS: Local Development Infrastructure
+# Stack: Postgres (PostGIS), Redis, ChromaDB, RabbitMQ
+# Constraint: Resource limits mirror 100% free-tier deployment targets (Render, Neon, Redis Cloud)
+
+services:
+  # --------------------------------------------------------------------------
+  # PostgreSQL + PostGIS
+  # Purpose: Primary relational database with spatial extensions for Geohashing.
+  # Note: Production will use Neon/Supabase, but local dev requires PostGIS.
+  # --------------------------------------------------------------------------
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: nexus-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexus_user
+      POSTGRES_PASSWORD: nexus_secure_password_local
+      POSTGRES_DB: nexus_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - nexus-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nexus_user -d nexus_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # --------------------------------------------------------------------------
+  # Redis
+  # Purpose: Caching, Pub/Sub, and Bloom Filter for JobScraperAgent deduplication.
+  # Note: Production will use Redis Cloud free tier.
+  # --------------------------------------------------------------------------
+  redis:
+    image: redis:7.2-alpine
+    container_name: nexus-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - nexus-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # --------------------------------------------------------------------------
+  # ChromaDB
+  # Purpose: Vector database for RAG pipeline (resume/job embedding storage).
+  # --------------------------------------------------------------------------
+  chromadb:
+    image: chromadb/chroma:0.4.24
+    container_name: nexus-chromadb
+    restart: unless-stopped
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/data
+    ports:
+      - "8000:8000"
+    volumes:
+      - nexus-chroma-data:/chroma/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # --------------------------------------------------------------------------
+  # RabbitMQ
+  # Purpose: Message broker for Event-Driven Architecture (Observer Pattern).
+  # Note: Provides reliable async task queuing for the JobScraperAgent.
+  # --------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: nexus-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: nexus_rabbit
+      RABBITMQ_DEFAULT_PASS: nexus_rabbit_pass_local
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    volumes:
+      - nexus-rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+# --------------------------------------------------------------------------
+# Networks & Volumes
+# --------------------------------------------------------------------------
+networks:
+  default:
+    name: nexus-net
+    driver: bridge
+
+volumes:
+  nexus-postgres-data:
+    name: nexus-postgres-data
+  nexus-redis-data:
+    name: nexus-redis-data
+  nexus-chroma-data:
+    name: nexus-chroma-data
+  nexus-rabbitmq-data:
+    name: nexus-rabbitmq-data
