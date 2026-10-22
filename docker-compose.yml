@@ -13,15 +13,15 @@ services:
     container_name: nexus-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: nexus_user
-      POSTGRES_PASSWORD: nexus_secure_password_local
-      POSTGRES_DB: nexus_db
+      POSTGRES_USER: ${POSTGRES_USER:-nexus_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexus_secure_password_local}
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_db}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
     volumes:
       - nexus-postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U nexus_user -d nexus_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexus_user} -d ${POSTGRES_DB:-nexus_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     ports:
-      - "6379:6379"
+      - "${REDIS_HOST_PORT:-6379}:6379"
     volumes:
       - nexus-redis-data:/data
     healthcheck:
@@ -61,6 +61,7 @@ services:
   # Purpose: Vector database for RAG pipeline (resume/job embedding storage).
   # --------------------------------------------------------------------------
   chromadb:
+    profiles: ["ai"]
     image: chromadb/chroma:0.4.24
     container_name: nexus-chromadb
     restart: unless-stopped
@@ -88,6 +89,7 @@ services:
   # Note: Provides reliable async task queuing for the JobScraperAgent.
   # --------------------------------------------------------------------------
   rabbitmq:
+    profiles: ["messaging"]
     image: rabbitmq:3.13-management-alpine
     container_name: nexus-rabbitmq
     restart: unless-stopped
@@ -95,8 +97,8 @@ services:
       RABBITMQ_DEFAULT_USER: nexus_rabbit
       RABBITMQ_DEFAULT_PASS: nexus_rabbit_pass_local
     ports:
-      - "5672:5672"   # AMQP protocol port
-      - "15672:15672" # Management UI port
+      - "${RABBITMQ_HOST_PORT:-5672}:5672"   # AMQP protocol port
+      - "${RABBITMQ_MANAGEMENT_HOST_PORT:-15672}:15672" # Management UI port
     volumes:
       - nexus-rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
@@ -109,6 +111,81 @@ services:
         limits:
           cpus: '0.5'
           memory: 256M
+
+# --------------------------------------------------------------------------
+# Application services
+# --------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_AI: ${INSTALL_AI:-false}
+    container_name: nexus-backend
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      DEBUG: ${DEBUG:-true}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      SECRET_KEY: ${SECRET_KEY:-local-only-change-before-production}
+      POSTGRES_USER: ${POSTGRES_USER:-nexus_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nexus_secure_password_local}
+      POSTGRES_SERVER: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_db}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: 8000
+      RABBITMQ_USER: ${RABBITMQ_USER:-nexus_rabbit}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-nexus_rabbit_pass_local}
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+    ports:
+      - "${BACKEND_HOST_PORT:-8001}:8000"
+    volumes:
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/live', timeout=5)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nexus-frontend
+    restart: unless-stopped
+    command:
+      - sh
+      - -c
+      - npm ci && npx vite --host=0.0.0.0 --port=5173 --strictPort
+    environment:
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001}
+      VITE_WEBSOCKET_URL: ${VITE_WEBSOCKET_URL:-ws://localhost:8001/ws}
+    ports:
+      - "${FRONTEND_HOST_PORT:-5174}:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
 
 # --------------------------------------------------------------------------
 # Networks & Volumes
@@ -127,3 +204,5 @@ volumes:
     name: nexus-chroma-data
   nexus-rabbitmq-data:
     name: nexus-rabbitmq-data
+  frontend-node-modules:
+    name: nexus-frontend-node-modules
