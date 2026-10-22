@@ -136,8 +136,13 @@ services:
       POSTGRES_SERVER: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-nexus_db}
+      POSTGRES_SSL: ${POSTGRES_SSL:-false}
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_USERNAME: ${REDIS_USERNAME:-}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_USE_TLS: ${REDIS_USE_TLS:-false}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5174}
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
       RABBITMQ_USER: ${RABBITMQ_USER:-nexus_rabbit}

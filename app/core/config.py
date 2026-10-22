@@ -4,8 +4,11 @@ Uses Pydantic V2 Settings for robust environment variable validation and type sa
 """
 
 from functools import lru_cache
+from urllib.parse import quote
+
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 class Settings(BaseSettings):
@@ -28,6 +31,7 @@ class Settings(BaseSettings):
     DEBUG: bool = Field(default=False, description="Enable debug mode")
     ENVIRONMENT: str = Field(default="development", description="Environment (development, staging, production)")
     API_V1_PREFIX: str = Field(default="/api/v1", description="Base API prefix")
+    FRONTEND_ORIGIN: str | None = Field(default=None, description="Deployed frontend origin allowed by CORS")
 
     # ----------------------------------------------------------------------
     # Security Settings
@@ -47,26 +51,46 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = Field(default="localhost", description="PostgreSQL server host")
     POSTGRES_PORT: int = Field(default=5432, description="PostgreSQL server port")
     POSTGRES_DB: str = Field(default="nexus_db", description="PostgreSQL database name")
+    POSTGRES_SSL: bool = Field(default=False, description="Require TLS for PostgreSQL connections")
     DB_ECHO: bool = Field(default=False, description="Enable SQLAlchemy query logging")
 
     @property
     def DATABASE_URL(self) -> str:
         """Constructs the async PostgreSQL connection string for SQLAlchemy 2.0."""
-        return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+        query = {"ssl": "require"} if self.POSTGRES_SSL else {}
+        return URL.create(
+            "postgresql+asyncpg",
+            username=self.POSTGRES_USER,
+            password=self.POSTGRES_PASSWORD,
+            host=self.POSTGRES_SERVER,
+            port=self.POSTGRES_PORT,
+            database=self.POSTGRES_DB,
+            query=query,
+        ).render_as_string(hide_password=False)
 
     # ----------------------------------------------------------------------
     # Redis Settings
     # ----------------------------------------------------------------------
     REDIS_HOST: str = Field(default="localhost", description="Redis server host")
     REDIS_PORT: int = Field(default=6379, description="Redis server port")
+    REDIS_USERNAME: str | None = Field(default=None, description="Redis username (if any)")
     REDIS_PASSWORD: str | None = Field(default=None, description="Redis password (if any)")
     REDIS_DB: int = Field(default=0, description="Redis database index")
+    REDIS_USE_TLS: bool = Field(default=False, description="Use TLS for Redis connections")
 
     @property
     def REDIS_URL(self) -> str:
         """Constructs the Redis connection string."""
-        auth = f":{self.REDIS_PASSWORD}@" if self.REDIS_PASSWORD else ""
-        return f"redis://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+        auth = ""
+        if self.REDIS_USERNAME:
+            auth = quote(self.REDIS_USERNAME, safe="")
+            if self.REDIS_PASSWORD:
+                auth += f":{quote(self.REDIS_PASSWORD, safe='')}"
+            auth += "@"
+        elif self.REDIS_PASSWORD:
+            auth = f":{quote(self.REDIS_PASSWORD, safe='')}@"
+        scheme = "rediss" if self.REDIS_USE_TLS else "redis"
+        return f"{scheme}://{auth}{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
 
     # ----------------------------------------------------------------------
     # Vector Database Settings (ChromaDB)

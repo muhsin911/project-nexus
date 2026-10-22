@@ -41,6 +41,63 @@ infrastructure data are stored in named Docker volumes and remain after stopping
 the services. Do not use `docker compose down --volumes` unless you intend to
 permanently remove that local data.
 
+## Free-tier deployment
+
+The suggested starter setup is a Render static site for the frontend, a Render
+Docker web service for the backend, Neon for PostgreSQL, and Upstash for Redis.
+Free plans, quotas, and provider setup screens can change. This guide prepares
+the project for hosting; it does not create provider accounts or deploy anything.
+
+1. Create a PostgreSQL database on Neon. From its connection details, copy the
+   host, port, database name, username, and password into the backend variables
+   listed below. Set `POSTGRES_SSL=true`; do not paste the entire connection URL
+   into a password field.
+2. Create a Redis database on Upstash. Use its Redis connection details (not a
+   REST URL). Copy its host, port, username if provided (commonly `default`),
+   and password. Set `REDIS_USE_TLS=true`.
+3. In Render, create a **Web Service** from this repository using the Docker
+   runtime, the repository root as the root directory, and `./Dockerfile` as
+   the Dockerfile path. Add the backend environment variables below. Set
+   `ENVIRONMENT=production`, `DEBUG=false`, and a unique, private `SECRET_KEY`.
+   The Docker image runs database migrations and listens on Render's `PORT`.
+   Set the service health-check path to `/api/v1/health/live`.
+4. In Render, create a **Static Site** from the same repository. Set the root
+   directory to `frontend`, the build command to `npm ci && npm run build`, and
+   the publish directory to `dist`. Add the build-time variable
+   `VITE_WEBSOCKET_URL` with the backend's secure WebSocket address:
+   `wss://<your-backend-name>.onrender.com/ws`.
+5. Copy the static site's HTTPS origin (for example,
+   `https://<your-site-name>.onrender.com`) into the backend's
+   `FRONTEND_ORIGIN` variable, then redeploy the backend. It must be the site
+   origin only, without a path or trailing slash.
+6. Open the static site and test it. The backend's liveness endpoint is
+   `https://<your-backend-name>.onrender.com/api/v1/health/live`.
+
+Backend environment variables to add in Render:
+
+```text
+POSTGRES_USER
+POSTGRES_PASSWORD
+POSTGRES_SERVER
+POSTGRES_PORT
+POSTGRES_DB
+POSTGRES_SSL=true
+REDIS_HOST
+REDIS_PORT
+REDIS_USERNAME (if your provider supplies one)
+REDIS_PASSWORD
+REDIS_USE_TLS=true
+SECRET_KEY (generate a strong private value; do not reuse the example)
+ENVIRONMENT=production
+DEBUG=false
+FRONTEND_ORIGIN
+```
+
+The free backend may sleep when idle, so its first request or WebSocket
+connection can take extra time while it starts. PostgreSQL and Redis are
+required for the backend to start. Keep credentials in the hosting provider's
+private environment settings, never in Git or frontend variables.
+
 ## Portfolio images
 
 Put public images such as a profile photo or project screenshots in
