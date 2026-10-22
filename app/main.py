@@ -84,11 +84,11 @@ def create_app() -> FastAPI:
     # Restrict to known frontend domains in production to prevent CSRF
     allowed_origins = [
         "http://localhost:5173",  # Vite default dev server
+        "http://localhost:5174",  # Docker Compose frontend port
         "http://localhost:3000",
     ]
-    
-    # Future: if settings.ENVIRONMENT == "production":
-    #     allowed_origins.append("https://nexus-portfolio.vercel.app")
+    if settings.FRONTEND_ORIGIN:
+        allowed_origins.append(settings.FRONTEND_ORIGIN.rstrip("/"))
 
     app.add_middleware(
         CORSMiddleware,
