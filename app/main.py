@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.session import engine
+from app.middleware.tracing import RequestIDMiddleware  # <-- Imported
 
 
 @asynccontextmanager
@@ -78,6 +79,10 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
         expose_headers=["*"],
     )
+
+    # Request ID Tracing Middleware
+    # Added AFTER CORS so it can correctly modify response headers
+    app.add_middleware(RequestIDMiddleware)
 
     # Include Routers
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
