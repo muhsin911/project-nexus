@@ -29,7 +29,7 @@ function isAgentStatus(status: unknown): status is AgentStatus {
 
 export function useAgentStream({
   userId,
-  url = 'ws://localhost:8000/ws',
+  url = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:8000/ws',
   reconnectAttempts = 5,
   reconnectInterval = 1000,
 }: UseAgentStreamOptions) {
