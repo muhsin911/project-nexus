@@ -3,6 +3,10 @@ Project NEXUS FastAPI Application Factory.
 Configures the main application instance, middleware, routers, and async lifespan events.
 """
 
+from app.events.dispatcher import dispatcher
+from app.events.subscribers import on_job_scraped
+from app.events.schemas import JobScrapedEvent
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -32,6 +36,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """
     # --- STARTUP ---
     print(f"🚀 Starting Project NEXUS API in {settings.ENVIRONMENT} mode...")
+
+    # Register Event Bus Subscribers
+    await dispatcher.subscribe(JobScrapedEvent, on_job_scraped)
+    print("✅ Event bus subscribers registered.")
     
     yield  # Application is running and serving requests
     
