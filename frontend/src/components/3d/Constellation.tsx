@@ -4,7 +4,7 @@
  * for high-performance frustum culling.
  */
 
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import { Group } from 'three';
 import { useThree } from '@react-three/fiber';
 import { Node } from './Node';
@@ -55,16 +55,7 @@ export function Constellation({ nodes, onNodeHover, onNodeClick }: Constellation
     const visiblePoints = quadTree.query(queryRange);
     
     return visiblePoints.map((p) => p.data as NodeData);
-  }, [quadTree, camera.position.x, camera.position.z]);
-
-  // 3. Attach userData to meshes for the RaycastManager to read
-  useEffect(() => {
-    if (groupRef.current) {
-      groupRef.current.traverse((child) => {
-        // The Node component will handle its own userData, but we ensure the group is ready
-      });
-    }
-  }, [visibleNodes]);
+  }, [quadTree, camera]);
 
   return (
     <group ref={groupRef} name="constellation">

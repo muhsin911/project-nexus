@@ -6,16 +6,19 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useAgentStore } from '@/store';
-import { useAgentStream } from '@/hooks';
+import type { ChatMessage } from '@/store/agentStore';
 import { GlassPanel } from './GlassPanel';
 import { cn } from '@/lib/utils';
 
-export function ChatPanel() {
+interface ChatPanelProps {
+  onSendMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void;
+}
+
+export function ChatPanel({ onSendMessage }: ChatPanelProps) {
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const messages = useAgentStore((state) => state.messages);
-  const { sendMessage } = useAgentStream({ userId: 'user-1' });
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -25,7 +28,7 @@ export function ChatPanel() {
   const handleSend = () => {
     if (!inputValue.trim()) return;
 
-    sendMessage({
+    onSendMessage({
       role: 'user',
       content: inputValue,
     });
@@ -89,7 +92,7 @@ export function ChatPanel() {
         <input
           type="text"
           value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          onChange={(event) => setInputValue(event.currentTarget.value)}
           onKeyPress={handleKeyPress}
           placeholder="Type a message..."
           className="flex-1 rounded-lg bg-slate-800/50 border border-slate-700/50 px-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500/50 transition-colors"

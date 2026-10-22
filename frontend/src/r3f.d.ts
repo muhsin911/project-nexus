@@ -5,8 +5,9 @@
 import type { ThreeElements } from '@react-three/fiber';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace JSX {
+    // TypeScript requires interface merging here to augment JSX intrinsic elements.
+    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
     interface IntrinsicElements extends ThreeElements {}
   }
 }

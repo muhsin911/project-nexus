@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Mesh } from 'three';
 import { NodeData } from '@/types/3d';
 
@@ -36,7 +36,7 @@ export function Node({ data, onHover, onClick }: NodeProps) {
     meshRef.current.scale.setScalar(newScale);
   });
 
-  const handlePointerOver = (e: any) => {
+  const handlePointerOver = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setHovered(true);
     document.body.style.cursor = 'pointer';
@@ -49,7 +49,7 @@ export function Node({ data, onHover, onClick }: NodeProps) {
     onHover?.(null);
   };
 
-  const handleClick = (e: any) => {
+  const handleClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     setActive(!active);
     onClick?.(data.id);

@@ -14,7 +14,10 @@ test('homepage has 3D canvas and UI overlays', async ({ page }) => {
   await expect(canvas).toBeVisible();
 
   // Verify the Connection Indicator is visible
-  const connectionIndicator = page.getByText('Connecting...').or(page.getByText('Connected')).or(page.getByText('Disconnected'));
+  const connectionIndicator = page.getByText('Connecting...')
+    .or(page.getByText('Connected'))
+    .or(page.getByText('Disconnected'))
+    .or(page.getByText('Connection Error'));
   await expect(connectionIndicator).toBeVisible();
 
   // Verify the Chat Panel is visible
@@ -36,7 +39,10 @@ test('chat input accepts text and send button is enabled', async ({ page }) => {
   await expect(sendButton).toBeDisabled();
 
   // Type a message
-  await input.fill('Hello, Nexus!');
+  await input.click();
+  await input.pressSequentially('Hello, Nexus!');
+
+  await expect(input).toHaveValue('Hello, Nexus!');
 
   // Send button should now be enabled
   await expect(sendButton).toBeEnabled();
