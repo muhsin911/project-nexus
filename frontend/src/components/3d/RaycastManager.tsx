@@ -15,7 +15,7 @@ interface RaycastManagerProps {
 }
 
 export function RaycastManager({ targetRef, onHover, onClick }: RaycastManagerProps) {
-  const { camera, gl } = useThree();
+  const { camera } = useThree();
   const raycaster = useRef(new Raycaster());
   const mouse = useRef(new Vector2(-100, -100)); // Start off-screen
   const hoveredId = useRef<string | null>(null);

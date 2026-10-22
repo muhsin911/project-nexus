@@ -4,17 +4,18 @@
  */
 
 import { useAgentStore } from '@/store';
-import { useAgentStream } from '@/hooks';
 import { GlassPanel } from './GlassPanel';
 import { cn } from '@/lib/utils';
 
-export function AgentControlPanel() {
+interface AgentControlPanelProps {
+  onTriggerAgent: (agentName: string, params: Record<string, unknown>) => void;
+}
+
+export function AgentControlPanel({ onTriggerAgent }: AgentControlPanelProps) {
   const agentStatus = useAgentStore((state) => state.agentStatus);
   const currentAgent = useAgentStore((state) => state.currentAgent);
-  const { triggerAgent } = useAgentStream({ userId: 'user-1' });
-
   const handleTriggerJobScraper = () => {
-    triggerAgent('job_scraper', {
+    onTriggerAgent('job_scraper', {
       query: 'Senior Software Engineer',
       location: 'Remote',
     });
@@ -53,7 +54,7 @@ export function AgentControlPanel() {
         </button>
 
         <button
-          onClick={() => triggerAgent('interview_prep', { job_id: 'sample-job-id' })}
+          onClick={() => onTriggerAgent('interview_prep', { job_id: 'sample-job-id' })}
           disabled={agentStatus === 'running'}
           className="w-full rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >

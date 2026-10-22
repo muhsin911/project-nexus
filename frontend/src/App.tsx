@@ -46,9 +46,7 @@ function App() {
   const setNodes = useAgentStore((state) => state.setNodes);
   const setSelectedNode = useAgentStore((state) => state.setSelectedNode);
   const setHoveredNode = useAgentStore((state) => state.setHoveredNode);
-
-  // Initialize WebSocket connection
-  useAgentStream({ userId: 'user-1' });
+  const { sendMessage, triggerAgent } = useAgentStream({ userId: 'user-1' });
 
   // Set initial nodes
   useEffect(() => {
@@ -82,12 +80,12 @@ function App() {
 
         {/* Top-Right: Agent Control */}
         <div className="absolute top-4 right-4 pointer-events-auto">
-          <AgentControlPanel />
+          <AgentControlPanel onTriggerAgent={triggerAgent} />
         </div>
 
         {/* Bottom-Right: Chat Panel */}
         <div className="absolute bottom-4 right-4 pointer-events-auto">
-          <ChatPanel />
+          <ChatPanel onSendMessage={sendMessage} />
         </div>
       </div>
     </div>

@@ -4,8 +4,9 @@
  * Implements auto-reconnect, heartbeat, and message routing to Zustand.
  */
 
-import { useEffect, useRef, useCallback } from 'react';
-import { useAgentStore, ConnectionStatus, ChatMessage } from '@/store/agentStore';
+import { useCallback, useEffect, useRef } from 'react';
+import { useAgentStore } from '@/store/agentStore';
+import type { AgentStatus, ChatMessage } from '@/store/agentStore';
 
 interface UseAgentStreamOptions {
   userId: string;
@@ -22,6 +23,10 @@ interface WebSocketMessage {
   data?: unknown;
 }
 
+function isAgentStatus(status: unknown): status is AgentStatus {
+  return status === 'idle' || status === 'running' || status === 'completed' || status === 'failed';
+}
+
 export function useAgentStream({
   userId,
   url = 'ws://localhost:8000/ws',
@@ -32,141 +37,147 @@ export function useAgentStream({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartbeatIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const attemptRef = useRef(0);
+  const shouldReconnectRef = useRef(false);
+  const connectRef = useRef<() => void>(() => {});
 
-  const {
-    setConnectionStatus,
-    addMessage,
-    setAgentStatus,
-  } = useAgentStore();
+  const addMessage = useAgentStore((state) => state.addMessage);
+  const setAgentStatus = useAgentStore((state) => state.setAgentStatus);
+  const setConnectionStatus = useAgentStore((state) => state.setConnectionStatus);
 
-  // Connect to WebSocket
-  const connect = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      return;
-    }
+  useEffect(() => {
+    shouldReconnectRef.current = true;
 
-    setConnectionStatus('connecting');
+    const clearTimers = () => {
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
 
-    try {
-      const ws = new WebSocket(`${url}/${userId}`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        console.log('✅ WebSocket connected');
-        setConnectionStatus('connected');
-        attemptRef.current = 0;
-
-        // Start heartbeat
-        heartbeatIntervalRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 30000); // Ping every 30 seconds
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          handleMessage(message);
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+    const scheduleReconnect = () => {
+      if (!shouldReconnectRef.current) return;
+      if (attemptRef.current >= reconnectAttempts) {
+        console.error('Max reconnection attempts reached');
         setConnectionStatus('error');
-      };
+        return;
+      }
 
-      ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason);
-        setConnectionStatus('disconnected');
-        cleanup();
-        attemptReconnect();
-      };
-    } catch (error) {
-      console.error('Failed to create WebSocket:', error);
-      setConnectionStatus('error');
-      attemptReconnect();
+      const delay = reconnectInterval * Math.pow(2, attemptRef.current);
+      console.log(`Attempting reconnect in ${delay}ms (attempt ${attemptRef.current + 1})`);
+      reconnectTimeoutRef.current = setTimeout(() => {
+        attemptRef.current++;
+        connect();
+      }, delay);
+    };
+
+    const handleMessage = (message: WebSocketMessage) => {
+      switch (message.type) {
+        case 'pong':
+          break;
+        case 'ack':
+          console.log('Message acknowledged:', message.message_id);
+          break;
+        case 'agent_status':
+          if (message.data && typeof message.data === 'object' && 'agent' in message.data &&
+            'status' in message.data && typeof message.data.agent === 'string' &&
+            isAgentStatus(message.data.status)) {
+            setAgentStatus(message.data.status, message.data.agent);
+          }
+          break;
+        case 'chat':
+          if (message.content) {
+            addMessage({
+              role: 'assistant',
+              content: message.content,
+              metadata: message.data as Record<string, unknown> | undefined,
+            });
+          }
+          break;
+        case 'system':
+          if (message.content) {
+            addMessage({
+              role: 'system',
+              content: message.content,
+            });
+          }
+          break;
+        default:
+          console.warn('Unknown message type:', message.type);
+      }
+    };
+
+    function connect() {
+      if (!shouldReconnectRef.current) return;
+      if (
+        wsRef.current?.readyState === WebSocket.OPEN ||
+        wsRef.current?.readyState === WebSocket.CONNECTING
+      ) {
+        return;
+      }
+
+      setConnectionStatus('connecting');
+
+      try {
+        const ws = new WebSocket(`${url}/${userId}`);
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+          setConnectionStatus('connected');
+          attemptRef.current = 0;
+          heartbeatIntervalRef.current = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+              ws.send(JSON.stringify({ type: 'ping' }));
+            }
+          }, 30000);
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const message: WebSocketMessage = JSON.parse(event.data);
+            handleMessage(message);
+          } catch (error) {
+            console.error('Failed to parse WebSocket message:', error);
+          }
+        };
+
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          setConnectionStatus('error');
+        };
+
+        ws.onclose = (event) => {
+          console.log('WebSocket closed:', event.code, event.reason);
+          setConnectionStatus('disconnected');
+          clearTimers();
+          wsRef.current = null;
+          scheduleReconnect();
+        };
+      } catch (error) {
+        console.error('Failed to create WebSocket:', error);
+        setConnectionStatus('error');
+        scheduleReconnect();
+      }
     }
-  }, [userId, url, setConnectionStatus]);
 
-  // Handle incoming messages
-  const handleMessage = useCallback((message: WebSocketMessage) => {
-    switch (message.type) {
-      case 'pong':
-        // Heartbeat response, do nothing
-        break;
+    connectRef.current = connect;
+    connect();
 
-      case 'ack':
-        // Message acknowledgment
-        console.log('Message acknowledged:', message.message_id);
-        break;
+    return () => {
+      shouldReconnectRef.current = false;
+      clearTimers();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.close(1000, 'Component unmounting');
+        wsRef.current = null;
+      }
+      setConnectionStatus('disconnected');
+    };
+  }, [addMessage, reconnectAttempts, reconnectInterval, setAgentStatus, setConnectionStatus, url, userId]);
 
-      case 'agent_status':
-        // Agent execution status update
-        if (message.status && message.data) {
-          const data = message.data as { agent: string; status: string };
-          setAgentStatus(data.status as any, data.agent);
-        }
-        break;
-
-      case 'chat':
-        // Chat message from AI agent
-        if (message.content) {
-          addMessage({
-            role: 'assistant',
-            content: message.content,
-            metadata: message.data as Record<string, unknown>,
-          });
-        }
-        break;
-
-      case 'system':
-        // System notification
-        if (message.content) {
-          addMessage({
-            role: 'system',
-            content: message.content,
-          });
-        }
-        break;
-
-      default:
-        console.warn('Unknown message type:', message.type);
-    }
-  }, [addMessage, setAgentStatus]);
-
-  // Attempt reconnection with exponential backoff
-  const attemptReconnect = useCallback(() => {
-    if (attemptRef.current >= reconnectAttempts) {
-      console.error('Max reconnection attempts reached');
-      setConnectionStatus('error');
-      return;
-    }
-
-    const delay = reconnectInterval * Math.pow(2, attemptRef.current);
-    console.log(`Attempting reconnect in ${delay}ms (attempt ${attemptRef.current + 1})`);
-
-    reconnectTimeoutRef.current = setTimeout(() => {
-      attemptRef.current++;
-      connect();
-    }, delay);
-  }, [connect, reconnectAttempts, reconnectInterval, setConnectionStatus]);
-
-  // Cleanup function
-  const cleanup = useCallback(() => {
-    if (heartbeatIntervalRef.current) {
-      clearInterval(heartbeatIntervalRef.current);
-      heartbeatIntervalRef.current = null;
-    }
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-  }, []);
-
-  // Send message to backend
   const sendMessage = useCallback((message: Omit<ChatMessage, 'id' | 'timestamp'>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -174,15 +185,12 @@ export function useAgentStream({
         message_id: crypto.randomUUID(),
         ...message,
       }));
-
-      // Optimistically add to store
       addMessage(message);
     } else {
       console.warn('WebSocket not connected, cannot send message');
     }
   }, [addMessage]);
 
-  // Trigger agent execution
   const triggerAgent = useCallback((agentName: string, params: Record<string, unknown>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
@@ -190,38 +198,40 @@ export function useAgentStream({
         agent: agentName,
         params,
       }));
-
       setAgentStatus('running', agentName);
     } else {
       console.warn('WebSocket not connected, cannot trigger agent');
     }
   }, [setAgentStatus]);
 
-  // Disconnect WebSocket
   const disconnect = useCallback(() => {
-    cleanup();
+    shouldReconnectRef.current = false;
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (heartbeatIntervalRef.current) {
+      clearInterval(heartbeatIntervalRef.current);
+      heartbeatIntervalRef.current = null;
+    }
     if (wsRef.current) {
+      wsRef.current.onclose = null;
       wsRef.current.close(1000, 'User initiated disconnect');
       wsRef.current = null;
     }
-  }, [cleanup]);
+    setConnectionStatus('disconnected');
+  }, [setConnectionStatus]);
 
-  // Initialize connection on mount
-  useEffect(() => {
-    connect();
-
-    return () => {
-      cleanup();
-      if (wsRef.current) {
-        wsRef.current.close(1000, 'Component unmounting');
-      }
-    };
-  }, [connect, cleanup]);
+  const reconnect = useCallback(() => {
+    shouldReconnectRef.current = true;
+    attemptRef.current = 0;
+    connectRef.current();
+  }, []);
 
   return {
     sendMessage,
     triggerAgent,
     disconnect,
-    reconnect: connect,
+    reconnect,
   };
 }
