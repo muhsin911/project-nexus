@@ -59,6 +59,7 @@ export function Node({ data, onHover, onClick }: NodeProps) {
     <mesh
       ref={meshRef}
       position={data.position}
+      userData={{ id: data.id }}
       onPointerOver={handlePointerOver}
       onPointerOut={handlePointerOut}
       onClick={handleClick}
