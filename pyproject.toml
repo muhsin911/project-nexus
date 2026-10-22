@@ -60,3 +60,20 @@ plugins = ["pydantic.mypy"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+# Third-party packages without PEP 561 py.typed markers.
+# Our own application code remains fully strict.
+[[tool.mypy.overrides]]
+module = [
+    "alembic.*",
+    "aio_pika.*",
+    "chromadb.*",
+    "google.generativeai.*",
+]
+ignore_missing_imports = true
+
+# -----------------------------------------------------------------------------
+# Build System Configuration
+# -----------------------------------------------------------------------------
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
