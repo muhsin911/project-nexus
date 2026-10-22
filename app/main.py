@@ -3,6 +3,9 @@ Project NEXUS FastAPI Application Factory.
 Configures the main application instance, middleware, routers, and async lifespan events.
 """
 
+from app.websocket.redis_pubsub import ws_pubsub
+from app.websocket.endpoints import router as ws_router
+
 from app.events.dispatcher import dispatcher
 from app.events.subscribers import on_job_scraped
 from app.events.schemas import JobScrapedEvent
@@ -40,13 +43,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Register Event Bus Subscribers
     await dispatcher.subscribe(JobScrapedEvent, on_job_scraped)
     print("✅ Event bus subscribers registered.")
+
+    # Connect WebSocket Pub/Sub
+    await ws_pubsub.connect()
+    print("✅ WebSocket Pub/Sub connected.")
     
     yield  # Application is running and serving requests
     
     # --- SHUTDOWN ---
     print("🛑 Shutting down Project NEXUS API gracefully...")
     
-    # Dispose of the database engine to close all pooled connections
+    # Disconnect WebSocket Pub/Sub
+    await ws_pubsub.disconnect()
+    print("✅ WebSocket Pub/Sub disconnected.")
+    
+    # Dispose of the database engine
     await engine.dispose()
     print("✅ Database connections closed.")
     
@@ -94,6 +105,9 @@ def create_app() -> FastAPI:
 
     # Include Routers
     app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+    # WebSocket Router (no prefix, direct path)
+    app.include_router(ws_router)
 
     return app
 
