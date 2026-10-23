@@ -43,6 +43,9 @@ class Settings(BaseSettings):
     # ----------------------------------------------------------------------
     # Security Settings
     # ----------------------------------------------------------------------
+    PORTFOLIO_ADMIN_USERNAME: str | None = Field(default=None)
+    PORTFOLIO_ADMIN_PASSWORD: str | None = Field(default=None)
+    PORTFOLIO_ACCESS_TOKEN_MINUTES: int = Field(default=60, ge=5, le=1440)
     SECRET_KEY: str = Field(
         default="super-secret-key-change-in-production",
         description="Secret key for JWT and session management",
@@ -171,6 +174,13 @@ class Settings(BaseSettings):
             and self.SECRET_KEY == "super-secret-key-change-in-production"
         ):
             raise ValueError("SECRET_KEY must be changed in production environment")
+        if self.ENVIRONMENT == "production":
+            if len(self.SECRET_KEY) < 32:
+                raise ValueError("SECRET_KEY must contain at least 32 characters in production")
+            if not self.PORTFOLIO_ADMIN_USERNAME or not self.PORTFOLIO_ADMIN_PASSWORD:
+                raise ValueError("Portfolio owner login credentials must be set in production")
+            if len(self.PORTFOLIO_ADMIN_PASSWORD) < 12:
+                raise ValueError("Portfolio admin password must contain at least 12 characters")
         return self
 
     @model_validator(mode="after")

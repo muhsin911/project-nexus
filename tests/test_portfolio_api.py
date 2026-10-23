@@ -1,4 +1,4 @@
-"""Tests for public portfolio content and protected management endpoints."""
+"""Tests for authenticated portfolio CMS and public content endpoints."""
 
 from collections.abc import AsyncIterator
 
@@ -15,7 +15,7 @@ from app.db.session import get_db
 
 
 @pytest.mark.asyncio
-async def test_portfolio_content_can_be_managed_and_read_publicly() -> None:
+async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -31,29 +31,76 @@ async def test_portfolio_content_can_be_managed_and_read_publicly() -> None:
             yield session
             await session.commit()
 
-    test_settings = Settings(_env_file=None, PORTFOLIO_ADMIN_TOKEN="test-secret")
+    test_settings = Settings(
+        _env_file=None,
+        PORTFOLIO_ADMIN_USERNAME="owner",
+        PORTFOLIO_ADMIN_PASSWORD="test-password",
+        SECRET_KEY="test-secret-key-that-is-long-enough-for-auth",
+    )
     app = FastAPI()
     app.include_router(api_router, prefix="/api/v1")
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_settings] = lambda: test_settings
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        dsa_url = "/api/v1/portfolio/dsa"
-        assert (await client.get(dsa_url)).json() == []
-        unauthorized = await client.post(dsa_url, json={})
-        assert unauthorized.status_code == 401
+        base = "/api/v1/portfolio"
+        assert (await client.get(f"{base}/dsa")).json() == []
+        assert (await client.get(f"{base}/content")).json() == []
+        assert (await client.post(f"{base}/dsa/categories", json={})).status_code == 401
+        assert (
+            await client.post(
+                f"{base}/admin/login",
+                json={"username": "owner", "password": "incorrect"},
+            )
+        ).status_code == 401
+
+        login = await client.post(
+            f"{base}/admin/login",
+            json={"username": "owner", "password": "test-password"},
+        )
+        assert login.status_code == 200
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        assert (await client.get(f"{base}/admin/session", headers=headers)).status_code == 204
+        assert (
+            await client.get(f"{base}/admin/session", headers={"Authorization": "Bearer invalid"})
+        ).status_code == 401
+
+        category_response = await client.post(
+            f"{base}/dsa/categories",
+            headers=headers,
+            json={
+                "name": "Hash Tables",
+                "slug": "hash-tables",
+                "description": "Hash maps and sets.",
+            },
+        )
+        assert category_response.status_code == 201
+        category = category_response.json()
+        category_update = await client.put(
+            f"{base}/dsa/categories/{category['id']}",
+            headers=headers,
+            json={
+                "name": "Hash Tables & Sets",
+                "slug": "hash-tables-sets",
+                "description": "Hash-based data structures.",
+            },
+        )
+        assert category_update.status_code == 200
+        assert category_update.json()["slug"] == "hash-tables-sets"
 
         problem_response = await client.post(
-            dsa_url,
-            headers={"Authorization": "Bearer test-secret"},
+            f"{base}/dsa",
+            headers=headers,
             json={
                 "title": "Two Sum",
+                "category_id": category["id"],
                 "platform": "LeetCode",
                 "difficulty": "Easy",
                 "problem_url": "https://leetcode.com/problems/two-sum/",
                 "tags": ["array", "hash-map"],
                 "summary": "Track previously seen values in a hash map.",
-                "solution": "For each value, look up its complement before inserting it.",
+                "solution": "Find each complement before inserting the current value.",
                 "time_complexity": "O(n)",
                 "space_complexity": "O(n)",
                 "solved_at": "2026-10-22",
@@ -61,57 +108,110 @@ async def test_portfolio_content_can_be_managed_and_read_publicly() -> None:
         )
         assert problem_response.status_code == 201
         problem = problem_response.json()
-        assert problem["title"] == "Two Sum"
-
-        public_list = await client.get(dsa_url)
-        assert public_list.status_code == 200
-        assert public_list.json()[0]["id"] == problem["id"]
-
-        edited_problem = {**problem, "title": "Two Sum — reviewed"}
-        update_response = await client.put(
-            f"{dsa_url}/{problem['id']}",
-            headers={"Authorization": "Bearer test-secret"},
-            json=edited_problem,
+        assert problem["category_id"] == category["id"]
+        assert (await client.get(f"{base}/dsa/categories")).json()[0]["slug"] == "hash-tables-sets"
+        problem_update = await client.put(
+            f"{base}/dsa/{problem['id']}",
+            headers=headers,
+            json={
+                **problem,
+                "solution": "Check the matching complement in the hash map first.",
+            },
         )
-        assert update_response.status_code == 200
-        assert update_response.json()["title"] == "Two Sum — reviewed"
+        assert problem_update.status_code == 200
+        assert "matching complement" in problem_update.json()["solution"]
 
-        status_url = "/api/v1/portfolio/cv/status"
-        assert (await client.get(status_url)).json() == {
-            "available": False,
-            "filename": None,
-            "updated_at": None,
-        }
+        image = await client.post(
+            f"{base}/images?filename=cover.png&alt_text=Portfolio%20cover",
+            headers={**headers, "Content-Type": "image/png"},
+            content=b"\x89PNG\r\n\x1a\nportfolio image bytes",
+        )
+        assert image.status_code == 201
+        image_data = image.json()
+
+        content_response = await client.post(
+            f"{base}/content",
+            headers=headers,
+            json={
+                "title": "A project story",
+                "slug": "project-story",
+                "excerpt": "A short introduction.",
+                "body": "Longer project notes.",
+                "published": True,
+                "sort_order": 1,
+                "image_id": image_data["id"],
+            },
+        )
+        assert content_response.status_code == 201
+        content = content_response.json()
+        assert content["image"]["url"] == f"/api/v1/portfolio/images/{image_data['id']}"
+        assert (await client.get(f"{base}/content")).json()[0]["slug"] == "project-story"
+        assert (await client.get(f"{base}/images/{image_data['id']}")).content.startswith(
+            b"\x89PNG"
+        )
+        content_update = await client.put(
+            f"{base}/content/{content['id']}",
+            headers=headers,
+            json={**content, "title": "Updated project story", "image": None},
+        )
+        assert content_update.status_code == 200
+        assert content_update.json()["title"] == "Updated project story"
+
+        draft = await client.post(
+            f"{base}/content",
+            headers=headers,
+            json={
+                "title": "Private draft",
+                "slug": "private-draft",
+                "excerpt": "Not public.",
+                "body": "Draft notes.",
+                "published": False,
+            },
+        )
+        assert draft.status_code == 201
+        assert (await client.get(f"{base}/content/private-draft")).status_code == 404
+        assert len((await client.get(f"{base}/admin/content", headers=headers)).json()) == 2
+
+        category_in_use = await client.delete(
+            f"{base}/dsa/categories/{category['id']}",
+            headers=headers,
+        )
+        assert category_in_use.status_code == 409
+
+        status_url = f"{base}/cv/status"
+        assert (await client.get(status_url)).json()["available"] is False
         pdf = b"%PDF-1.7\nportfolio test\n"
         upload = await client.put(
-            "/api/v1/portfolio/cv?filename=resume.pdf",
+            f"{base}/cv?filename=resume.pdf",
             content=pdf,
-            headers={
-                "Authorization": "Bearer test-secret",
-                "Content-Type": "application/pdf",
-            },
+            headers={**headers, "Content-Type": "application/pdf"},
         )
         assert upload.status_code == 204
-        assert (await client.get(status_url)).json()["available"] is True
-        download = await client.get("/api/v1/portfolio/cv")
-        assert download.content == pdf
-        assert download.headers["content-type"] == "application/pdf"
+        assert (await client.get(f"{base}/cv")).content == pdf
 
-        invalid_upload = await client.put(
-            "/api/v1/portfolio/cv?filename=not-a-pdf.pdf",
-            content=b"not a PDF",
-            headers={
-                "Authorization": "Bearer test-secret",
-                "Content-Type": "application/pdf",
-            },
+        assert (
+            await client.delete(f"{base}/dsa/{problem['id']}", headers=headers)
+        ).status_code == 204
+        assert (
+            await client.delete(f"{base}/dsa/categories/{category['id']}", headers=headers)
+        ).status_code == 204
+        assert (
+            await client.delete(f"{base}/images/{image_data['id']}", headers=headers)
+        ).status_code == 204
+        detached_content = await client.get(f"{base}/content/project-story")
+        assert detached_content.status_code == 200
+        assert detached_content.json()["image_id"] is None
+        assert (
+            await client.delete(f"{base}/content/{content['id']}", headers=headers)
+        ).status_code == 204
+        assert (
+            await client.delete(f"{base}/content/{draft.json()['id']}", headers=headers)
+        ).status_code == 204
+        invalid_image = await client.post(
+            f"{base}/images?filename=bad.png&alt_text=Bad",
+            headers={**headers, "Content-Type": "image/png"},
+            content=b"not a png",
         )
-        assert invalid_upload.status_code == 400
-
-        deleted = await client.delete(
-            f"{dsa_url}/{problem['id']}",
-            headers={"Authorization": "Bearer test-secret"},
-        )
-        assert deleted.status_code == 204
-        assert (await client.get(dsa_url)).json() == []
+        assert invalid_image.status_code == 400
 
     await engine.dispose()

@@ -11,12 +11,8 @@ Install Docker Desktop, then from the repository root run:
 Copy-Item .env.example .env
 ```
 
-Set `PORTFOLIO_ADMIN_TOKEN` in `.env` to a private random value. For example,
-generate one with:
-
-```powershell
-python -c "import secrets; print(secrets.token_urlsafe(32))"
-```
+Set `PORTFOLIO_ADMIN_USERNAME` and a strong `PORTFOLIO_ADMIN_PASSWORD` in
+`.env` before starting the services.
 
 Then start the portfolio:
 
@@ -34,12 +30,12 @@ Database migrations run before the API starts. Redis, ChromaDB, and RabbitMQ
 are not required for the portfolio; optional services and the AI dependency
 group are available for the separate agent features.
 
-The backend's portfolio-management endpoints reject writes unless
-`PORTFOLIO_ADMIN_TOKEN` is configured. Keep this token private; it is only
-entered on `/manage`, sent to the backend for protected requests, and held in
-the page's memory. Résumés are validated as PDFs (up to 10 MB) and stored in
-PostgreSQL. The current résumé and DSA entries are publicly downloadable or
-readable by design.
+The owner-only management interface is at `/manage`; it is not linked in the
+public navigation. Sign-in issues a short-lived access token, and every
+management endpoint verifies it. Stories, images, résumé files, DSA categories,
+and solved problems are stored in PostgreSQL. Only published stories and
+problem entries are public. Images are limited to JPEG, PNG, and WebP up to
+5 MB; résumé PDFs are limited to 10 MB.
 
 Stop the services with `Ctrl+C` or `docker compose down`. The database is kept
 in a named Docker volume. Do not use `docker compose down --volumes` unless you
@@ -58,8 +54,8 @@ for hosting; it does not create provider accounts or deploy anything.
 2. Create a Render **Web Service** from this repository using the Docker
    runtime, the repository root, and `./Dockerfile`. Set
    `ENVIRONMENT=production`, `DEBUG=false`, a strong private `SECRET_KEY`, and
-   a separate random `PORTFOLIO_ADMIN_TOKEN`. Set the health-check path to
-   `/api/v1/health/live`.
+   private `PORTFOLIO_ADMIN_USERNAME` and `PORTFOLIO_ADMIN_PASSWORD` values.
+   Set the health-check path to `/api/v1/health/live`.
 3. Create a Render **Static Site** from the same repository. Set root
    directory to `frontend`, build command to `npm ci && npm run build`, and
    publish directory to `dist`. Add the build-time variable
@@ -81,7 +77,9 @@ POSTGRES_PORT
 POSTGRES_DB
 POSTGRES_SSL=true
 SECRET_KEY
-PORTFOLIO_ADMIN_TOKEN
+PORTFOLIO_ADMIN_USERNAME
+PORTFOLIO_ADMIN_PASSWORD
+PORTFOLIO_ACCESS_TOKEN_MINUTES=60
 ENVIRONMENT=production
 DEBUG=false
 FRONTEND_ORIGIN
@@ -90,8 +88,8 @@ FRONTEND_ORIGIN
 Redis and the separate AI/agent features are optional and are not needed by
 the public portfolio or content manager. A free backend may sleep when idle,
 so its first request can take extra time while it starts. Keep database
-credentials and both tokens in the hosting provider's private environment
-settings, never in Git or frontend build variables.
+credentials and the owner password in the hosting provider's private
+environment settings, never in Git or frontend build variables.
 
 ## Portfolio images
 
