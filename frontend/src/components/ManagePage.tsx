@@ -26,14 +26,19 @@ import {
   type PortfolioImage,
   type ResumeStatus,
 } from '@/lib/portfolioApi';
+import { StructuredEditors } from '@/components/StructuredEditors';
 
-type Panel = 'content' | 'dsa' | 'images' | 'resume';
+type Panel = 'site' | 'content' | 'dsa' | 'images' | 'resume';
 
 const emptyContent: PortfolioContentInput = {
   title: '',
   slug: '',
   excerpt: '',
   body: '',
+  role: '',
+  tech_stack: [],
+  repository_url: null,
+  live_url: null,
   published: true,
   sort_order: 0,
   image_id: null,
@@ -298,6 +303,10 @@ export function ManagePage() {
       slug: item.slug,
       excerpt: item.excerpt,
       body: item.body,
+      role: item.role,
+      tech_stack: item.tech_stack,
+      repository_url: item.repository_url,
+      live_url: item.live_url,
       published: item.published,
       sort_order: item.sort_order,
       image_id: item.image_id,
@@ -341,7 +350,7 @@ export function ManagePage() {
           <div className="manage-gate">
             <p className="eyebrow">OWNER ACCESS · PRIVATE</p>
             <h1>Welcome<br /><em>back.</em></h1>
-            <p>Sign in to manage portfolio stories, images, your résumé, and the DSA library.</p>
+            <p>Sign in to manage your profile, projects, experience, skills, testimonials, résumé, and DSA library.</p>
             <form className="manage-login" onSubmit={handleLogin}>
               <label htmlFor="admin-username">Username
                 <input autoComplete="username" id="admin-username" onChange={(event) => setUsername(event.currentTarget.value)} required value={username} />
@@ -364,7 +373,8 @@ export function ManagePage() {
             </div>
             <nav className="cms-tabs" aria-label="Content studio sections">
               {([
-                ['content', 'Stories', content.length],
+                ['site', 'Profile & sections', 'CMS'],
+                ['content', 'Projects', content.length],
                 ['dsa', 'DSA library', problems.length],
                 ['images', 'Images', images.length],
                 ['resume', 'Résumé', resume.available ? 'LIVE' : '—'],
@@ -379,13 +389,21 @@ export function ManagePage() {
             {panel === 'content' && (
               <>
                 <section className="manage-card">
-                  <div className="manage-card-heading"><div><span>01</span><h2>{contentEditId ? 'Edit story' : 'Create a story'}</h2></div><p>PROJECTS · WRITING · ABOUT</p></div>
-                  <p className="manage-help">Create portfolio stories and choose whether each item is publicly visible.</p>
+                  <div className="manage-card-heading"><div><span>01</span><h2>{contentEditId ? 'Edit project' : 'Add a project'}</h2></div><p>PROJECTS · CASE STUDIES</p></div>
+                  <p className="manage-help">Add project details, technology stack, repository and live links, cover image, and visibility.</p>
                   <form className="problem-form" onSubmit={handleSaveContent}>
                     <label>Title<input maxLength={200} onChange={(event) => setContentForm({ ...contentForm, title: event.currentTarget.value })} required value={contentForm.title} /></label>
                     <label>URL slug<input maxLength={220} onChange={(event) => setContentForm({ ...contentForm, slug: event.currentTarget.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') })} required value={contentForm.slug} /></label>
                     <label>Short introduction<textarea maxLength={500} onChange={(event) => setContentForm({ ...contentForm, excerpt: event.currentTarget.value })} required rows={2} value={contentForm.excerpt} /></label>
                     <label>Content<textarea maxLength={30000} onChange={(event) => setContentForm({ ...contentForm, body: event.currentTarget.value })} required rows={8} value={contentForm.body} /></label>
+                    <div className="form-row">
+                      <label>Role / project type<input maxLength={160} onChange={(event) => setContentForm({ ...contentForm, role: event.currentTarget.value })} placeholder="Full-stack application" value={contentForm.role} /></label>
+                      <label>Technology stack<input onChange={(event) => setContentForm({ ...contentForm, tech_stack: event.currentTarget.value.split(',').map((item) => item.trim()).filter(Boolean) })} placeholder="React, TypeScript, FastAPI" value={contentForm.tech_stack.join(', ')} /></label>
+                    </div>
+                    <div className="form-row">
+                      <label>GitHub repository<input maxLength={2048} onChange={(event) => setContentForm({ ...contentForm, repository_url: event.currentTarget.value || null })} type="url" value={contentForm.repository_url ?? ''} /></label>
+                      <label>Live project link<input maxLength={2048} onChange={(event) => setContentForm({ ...contentForm, live_url: event.currentTarget.value || null })} type="url" value={contentForm.live_url ?? ''} /></label>
+                    </div>
                     <div className="form-row">
                       <label>Cover image
                         <select onChange={(event) => setContentForm({ ...contentForm, image_id: event.currentTarget.value || null })} value={contentForm.image_id ?? ''}>
@@ -397,12 +415,12 @@ export function ManagePage() {
                     <label className="checkbox-field"><input checked={contentForm.published} onChange={(event) => setContentForm({ ...contentForm, published: event.currentTarget.checked })} type="checkbox" /> Publish this story</label>
                     <div className="form-actions">
                       {contentEditId && <button className="manage-signout" onClick={() => { setContentEditId(undefined); setContentForm(emptyContent); }} type="button">Cancel edit</button>}
-                      <button className="button button-dark" disabled={busy} type="submit">{busy ? 'Saving…' : contentEditId ? 'Save story' : 'Create story'} <span>↗</span></button>
+                      <button className="button button-dark" disabled={busy} type="submit">{busy ? 'Saving…' : contentEditId ? 'Save project' : 'Add project'} <span>↗</span></button>
                     </div>
                   </form>
                 </section>
                 <section className="manage-card">
-                  <div className="manage-card-heading"><div><span>02</span><h2>All stories</h2></div><p>{content.length} ENTRIES</p></div>
+                  <div className="manage-card-heading"><div><span>02</span><h2>All projects</h2></div><p>{content.length} ENTRIES</p></div>
                   <ul className="manage-problem-list">
                     {content.map((item) => (
                       <li key={item.id}>
@@ -410,11 +428,13 @@ export function ManagePage() {
                         <div className="manage-item-actions"><button onClick={() => editContent(item)} type="button">Edit</button><button disabled={busy} onClick={() => void handleDeleteContent(item)} type="button">Delete</button></div>
                       </li>
                     ))}
-                    {!content.length && <li><span>No stories yet. Create one above.</span></li>}
+                    {!content.length && <li><span>No projects yet. Add one above.</span></li>}
                   </ul>
                 </section>
               </>
             )}
+
+            {panel === 'site' && <StructuredEditors images={images} token={token} />}
 
             {panel === 'dsa' && (
               <>

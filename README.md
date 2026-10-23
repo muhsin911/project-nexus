@@ -1,7 +1,8 @@
 # Project NEXUS
 
-A personal portfolio with a public DSA log and a private content manager for
-publishing a résumé and solved problems.
+A personal portfolio with an authenticated content manager for profile details,
+projects, experience, skills, testimonials, a résumé, and categorized DSA
+solutions.
 
 ## Local development with Docker
 
@@ -32,10 +33,18 @@ group are available for the separate agent features.
 
 The owner-only management interface is at `/manage`; it is not linked in the
 public navigation. Sign-in issues a short-lived access token, and every
-management endpoint verifies it. Stories, images, résumé files, DSA categories,
-and solved problems are stored in PostgreSQL. Only published stories and
-problem entries are public. Images are limited to JPEG, PNG, and WebP up to
-5 MB; résumé PDFs are limited to 10 MB.
+management endpoint verifies it. Profile information, projects, experience, skills, testimonials, images, résumé
+files, DSA categories, and solved problems are stored in PostgreSQL. Draft
+entries remain private. Images are limited to JPEG, PNG, and WebP up to 5 MB;
+résumé PDFs are limited to 10 MB.
+
+The portfolio supports a light/dark theme, a responsive menu containing the
+DSA log, and a contact form. To deliver contact messages, configure
+`SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM_EMAIL`,
+and `PORTFOLIO_CONTACT_EMAIL`. STARTTLS is enabled by default and can be
+disabled with `SMTP_STARTTLS=false` only when the mail server expects a
+non-TLS connection. Without SMTP settings, the contact form reports that email
+delivery is unavailable; it does not pretend that messages were sent.
 
 Stop the services with `Ctrl+C` or `docker compose down`. The database is kept
 in a named Docker volume. Do not use `docker compose down --volumes` unless you
@@ -80,6 +89,13 @@ SECRET_KEY
 PORTFOLIO_ADMIN_USERNAME
 PORTFOLIO_ADMIN_PASSWORD
 PORTFOLIO_ACCESS_TOKEN_MINUTES=60
+SMTP_HOST
+SMTP_PORT=587
+SMTP_USERNAME
+SMTP_PASSWORD
+SMTP_FROM_EMAIL
+PORTFOLIO_CONTACT_EMAIL
+SMTP_STARTTLS=true
 ENVIRONMENT=production
 DEBUG=false
 FRONTEND_ORIGIN

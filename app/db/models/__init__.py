@@ -8,8 +8,12 @@ from app.db.models.portfolio import (
     DSACategory,
     DSAProblem,
     PortfolioContent,
+    PortfolioExperience,
     PortfolioImage,
+    PortfolioProfile,
     PortfolioResume,
+    PortfolioSkill,
+    PortfolioTestimonial,
 )
 
 __all__ = [
@@ -17,6 +21,10 @@ __all__ = [
     "DSAProblem",
     "Job",
     "PortfolioContent",
+    "PortfolioExperience",
     "PortfolioImage",
+    "PortfolioProfile",
     "PortfolioResume",
+    "PortfolioSkill",
+    "PortfolioTestimonial",
 ]

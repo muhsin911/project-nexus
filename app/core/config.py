@@ -46,6 +46,13 @@ class Settings(BaseSettings):
     PORTFOLIO_ADMIN_USERNAME: str | None = Field(default=None)
     PORTFOLIO_ADMIN_PASSWORD: str | None = Field(default=None)
     PORTFOLIO_ACCESS_TOKEN_MINUTES: int = Field(default=60, ge=5, le=1440)
+    SMTP_HOST: str | None = Field(default=None)
+    SMTP_PORT: int = Field(default=587, ge=1, le=65535)
+    SMTP_USERNAME: str | None = Field(default=None)
+    SMTP_PASSWORD: str | None = Field(default=None)
+    SMTP_FROM_EMAIL: str | None = Field(default=None)
+    PORTFOLIO_CONTACT_EMAIL: str | None = Field(default=None)
+    SMTP_STARTTLS: bool = Field(default=True)
     SECRET_KEY: str = Field(
         default="super-secret-key-change-in-production",
         description="Secret key for JWT and session management",

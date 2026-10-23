@@ -1,6 +1,7 @@
 """Tests for authenticated portfolio CMS and public content endpoints."""
 
 from collections.abc import AsyncIterator
+from email.message import EmailMessage
 
 import pytest
 from fastapi import FastAPI
@@ -15,7 +16,9 @@ from app.db.session import get_db
 
 
 @pytest.mark.asyncio
-async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
+async def test_owner_auth_cms_dsa_categories_images_and_resume(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     engine = create_async_engine(
         "sqlite+aiosqlite://",
         connect_args={"check_same_thread": False},
@@ -65,6 +68,139 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
         assert (
             await client.get(f"{base}/admin/session", headers={"Authorization": "Bearer invalid"})
         ).status_code == 401
+        assert (await client.get(f"{base}/profile")).json()["full_name"] == "Your Name"
+        profile_update = await client.put(
+            f"{base}/profile",
+            headers=headers,
+            json={
+                "full_name": "Alex Engineer",
+                "headline": "Product Engineer",
+                "job_roles": ["Engineer", "Designer"],
+                "about_title": "About Alex",
+                "about": "A concise introduction.",
+                "location": "Remote",
+                "email": "alex@example.com",
+                "expertise": ["Product engineering"],
+                "social_links": [
+                    {"label": "GitHub", "url": "https://github.com/alex", "icon": "github"}
+                ],
+            },
+        )
+        assert profile_update.status_code == 200
+        assert (await client.get(f"{base}/profile")).json()["social_links"][0]["label"] == "GitHub"
+        assert (
+            await client.put(f"{base}/profile", json={"full_name": "Unauthorized"})
+        ).status_code == 401
+
+        experience_response = await client.post(
+            f"{base}/experience",
+            headers=headers,
+            json={
+                "company": "NEXUS",
+                "designation": "Software Engineer",
+                "description": "Built useful software.",
+                "year": "2024 — Present",
+                "sort_order": 1,
+                "published": True,
+            },
+        )
+        assert experience_response.status_code == 201
+        experience_id = experience_response.json()["id"]
+        assert (await client.get(f"{base}/experience")).json()[0]["company"] == "NEXUS"
+        experience_update = await client.put(
+            f"{base}/experience/{experience_id}",
+            headers=headers,
+            json={
+                "company": "NEXUS Labs",
+                "designation": "Lead Engineer",
+                "description": "Updated role.",
+                "year": "2024 — Present",
+                "sort_order": 0,
+                "published": False,
+            },
+        )
+        assert experience_update.status_code == 200
+        assert (await client.get(f"{base}/experience")).json() == []
+
+        skill_response = await client.post(
+            f"{base}/skills",
+            headers=headers,
+            json={"name": "TypeScript", "icon": "typescript", "group": "Frontend"},
+        )
+        assert skill_response.status_code == 201
+        skill_id = skill_response.json()["id"]
+        assert (await client.get(f"{base}/skills")).json()[0]["icon"] == "typescript"
+        assert (
+            await client.put(
+                f"{base}/skills/{skill_id}",
+                headers=headers,
+                json={"name": "TypeScript", "icon": "ts", "group": "Language", "published": False},
+            )
+        ).status_code == 200
+        assert (await client.get(f"{base}/skills")).json() == []
+
+        assert (
+            await client.post(
+                f"{base}/contact",
+                json={
+                    "name": "Visitor",
+                    "email": "visitor@example.com",
+                    "subject": "Hello",
+                    "message": "A message to the portfolio owner.",
+                    "website": "",
+                },
+            )
+        ).status_code == 503
+        assert (
+            await client.post(
+                f"{base}/contact",
+                json={
+                    "name": "Spam bot",
+                    "email": "bot@example.com",
+                    "subject": "Hello",
+                    "message": "A message to the portfolio owner.",
+                    "website": "filled by bot",
+                },
+            )
+        ).status_code == 400
+
+        sent_messages: list[EmailMessage] = []
+
+        class FakeSMTP:
+            def __init__(self, host: str, port: int, timeout: int) -> None:
+                assert host == "smtp.example.com"
+                assert port == 587
+                assert timeout == 10
+
+            def __enter__(self) -> "FakeSMTP":
+                return self
+
+            def __exit__(self, *args: object) -> None:
+                return None
+
+            def starttls(self, context: object) -> None:
+                assert context is not None
+
+            def send_message(self, message: EmailMessage) -> None:
+                sent_messages.append(message)
+
+        monkeypatch.setattr("app.api.v1.endpoints.portfolio.smtplib.SMTP", FakeSMTP)
+        test_settings.SMTP_HOST = "smtp.example.com"
+        test_settings.SMTP_FROM_EMAIL = "portfolio@example.com"
+        test_settings.PORTFOLIO_CONTACT_EMAIL = "owner@example.com"
+        delivered = await client.post(
+            f"{base}/contact",
+            json={
+                "name": "Visitor",
+                "email": "visitor@example.com",
+                "subject": "Hello",
+                "message": "A message to the portfolio owner.",
+            },
+        )
+        assert delivered.status_code == 202
+        assert len(sent_messages) == 1
+        assert sent_messages[0]["To"] == "owner@example.com"
+        assert sent_messages[0]["Reply-To"] == "visitor@example.com"
 
         category_response = await client.post(
             f"{base}/dsa/categories",
@@ -137,6 +273,10 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
                 "slug": "project-story",
                 "excerpt": "A short introduction.",
                 "body": "Longer project notes.",
+                "role": "Full-stack application",
+                "tech_stack": ["React", "FastAPI"],
+                "repository_url": "https://github.com/example/project",
+                "live_url": "https://example.com",
                 "published": True,
                 "sort_order": 1,
                 "image_id": image_data["id"],
@@ -145,6 +285,7 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
         assert content_response.status_code == 201
         content = content_response.json()
         assert content["image"]["url"] == f"/api/v1/portfolio/images/{image_data['id']}"
+        assert content["tech_stack"] == ["React", "FastAPI"]
         assert (await client.get(f"{base}/content")).json()[0]["slug"] == "project-story"
         assert (await client.get(f"{base}/images/{image_data['id']}")).content.startswith(
             b"\x89PNG"
@@ -172,6 +313,22 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
         assert (await client.get(f"{base}/content/private-draft")).status_code == 404
         assert len((await client.get(f"{base}/admin/content", headers=headers)).json()) == 2
 
+        testimonial = await client.post(
+            f"{base}/testimonials",
+            headers=headers,
+            json={
+                "name": "Sam Colleague",
+                "designation": "Product Lead",
+                "content": "A thoughtful collaborator.",
+                "image_id": image_data["id"],
+            },
+        )
+        assert testimonial.status_code == 201
+        testimonial_id = testimonial.json()["id"]
+        assert (await client.get(f"{base}/testimonials")).json()[0]["image"]["id"] == image_data[
+            "id"
+        ]
+
         category_in_use = await client.delete(
             f"{base}/dsa/categories/{category['id']}",
             headers=headers,
@@ -197,6 +354,16 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume() -> None:
         ).status_code == 204
         assert (
             await client.delete(f"{base}/images/{image_data['id']}", headers=headers)
+        ).status_code == 204
+        assert (await client.get(f"{base}/testimonials")).json()[0]["image_id"] is None
+        assert (
+            await client.delete(f"{base}/testimonials/{testimonial_id}", headers=headers)
+        ).status_code == 204
+        assert (
+            await client.delete(f"{base}/experience/{experience_id}", headers=headers)
+        ).status_code == 204
+        assert (
+            await client.delete(f"{base}/skills/{skill_id}", headers=headers)
         ).status_code == 204
         detached_content = await client.get(f"{base}/content/project-story")
         assert detached_content.status_code == 200

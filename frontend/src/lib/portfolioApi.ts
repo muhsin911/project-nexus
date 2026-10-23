@@ -38,6 +38,10 @@ export interface PortfolioContent {
   slug: string;
   excerpt: string;
   body: string;
+  role: string;
+  tech_stack: string[];
+  repository_url: string | null;
+  live_url: string | null;
   published: boolean;
   sort_order: number;
   image_id: string | null;
@@ -57,6 +61,57 @@ export interface AdminSession {
   token_type: 'bearer';
   expires_in: number;
 }
+
+export interface PortfolioSocialLink {
+  label: string;
+  url: string;
+  icon: string;
+}
+
+export interface PortfolioProfile {
+  full_name: string;
+  headline: string;
+  job_roles: string[];
+  about_title: string;
+  about: string;
+  location: string;
+  email: string;
+  expertise: string[];
+  social_links: PortfolioSocialLink[];
+}
+
+export interface ExperienceEntry {
+  id: string;
+  company: string;
+  designation: string;
+  description: string;
+  year: string;
+  sort_order: number;
+  published: boolean;
+}
+export type ExperienceInput = Omit<ExperienceEntry, 'id'>;
+
+export interface SkillEntry {
+  id: string;
+  name: string;
+  icon: string;
+  group: string;
+  sort_order: number;
+  published: boolean;
+}
+export type SkillInput = Omit<SkillEntry, 'id'>;
+
+export interface TestimonialEntry {
+  id: string;
+  name: string;
+  designation: string;
+  content: string;
+  image_id: string | null;
+  image: PortfolioImage | null;
+  sort_order: number;
+  published: boolean;
+}
+export type TestimonialInput = Omit<TestimonialEntry, 'id' | 'image'>;
 
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
 export const apiBase = configuredApiBase.replace(/\/+$/, '').endsWith('/api/v1')
@@ -108,6 +163,36 @@ export function getPublishedContent(): Promise<PortfolioContent[]> {
   return request('/portfolio/content');
 }
 
+export function getPortfolioProfile(): Promise<PortfolioProfile> {
+  return request('/portfolio/profile');
+}
+
+export function getExperience(): Promise<ExperienceEntry[]> {
+  return request('/portfolio/experience');
+}
+
+export function getSkills(): Promise<SkillEntry[]> {
+  return request('/portfolio/skills');
+}
+
+export function getTestimonials(): Promise<TestimonialEntry[]> {
+  return request('/portfolio/testimonials');
+}
+
+export function sendContactMessage(data: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  website: string;
+}): Promise<{ message: string }> {
+  return request('/portfolio/contact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+}
+
 export function getResumeStatus(): Promise<ResumeStatus> {
   return request('/portfolio/cv/status');
 }
@@ -129,6 +214,62 @@ export function verifyAdminSession(token: string): Promise<void> {
 
 export function getAdminContent(token: string): Promise<PortfolioContent[]> {
   return request('/portfolio/admin/content', { headers: adminHeaders(token) });
+}
+
+export function savePortfolioProfile(profile: PortfolioProfile, token: string): Promise<PortfolioProfile> {
+  return request('/portfolio/profile', {
+    method: 'PUT',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(profile),
+  });
+}
+
+export function getAdminExperience(token: string): Promise<ExperienceEntry[]> {
+  return request('/portfolio/admin/experience', { headers: adminHeaders(token) });
+}
+
+export function saveExperience(entry: ExperienceInput, token: string, id?: string): Promise<ExperienceEntry> {
+  return request(`/portfolio/experience${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteExperience(id: string, token: string): Promise<void> {
+  return request(`/portfolio/experience/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
+export function getAdminSkills(token: string): Promise<SkillEntry[]> {
+  return request('/portfolio/admin/skills', { headers: adminHeaders(token) });
+}
+
+export function saveSkill(entry: SkillInput, token: string, id?: string): Promise<SkillEntry> {
+  return request(`/portfolio/skills${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteSkill(id: string, token: string): Promise<void> {
+  return request(`/portfolio/skills/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
+export function getAdminTestimonials(token: string): Promise<TestimonialEntry[]> {
+  return request('/portfolio/admin/testimonials', { headers: adminHeaders(token) });
+}
+
+export function saveTestimonial(entry: TestimonialInput, token: string, id?: string): Promise<TestimonialEntry> {
+  return request(`/portfolio/testimonials${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteTestimonial(id: string, token: string): Promise<void> {
+  return request(`/portfolio/testimonials/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
 }
 
 export function savePortfolioContent(
