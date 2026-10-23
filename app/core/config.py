@@ -29,25 +29,36 @@ class Settings(BaseSettings):
     # ----------------------------------------------------------------------
     PROJECT_NAME: str = Field(default="Project NEXUS", description="Name of the project")
     DEBUG: bool = Field(default=False, description="Enable debug mode")
-    ENVIRONMENT: str = Field(default="development", description="Environment (development, staging, production)")
+    ENVIRONMENT: str = Field(
+        default="development", description="Environment (development, staging, production)"
+    )
     API_V1_PREFIX: str = Field(default="/api/v1", description="Base API prefix")
-    FRONTEND_ORIGIN: str | None = Field(default=None, description="Deployed frontend origin allowed by CORS")
+    FRONTEND_ORIGIN: str | None = Field(
+        default=None, description="Deployed frontend origin allowed by CORS"
+    )
+    PORTFOLIO_ADMIN_TOKEN: str | None = Field(
+        default=None, description="Bearer token protecting portfolio management endpoints"
+    )
 
     # ----------------------------------------------------------------------
     # Security Settings
     # ----------------------------------------------------------------------
     SECRET_KEY: str = Field(
-        default="super-secret-key-change-in-production", 
-        description="Secret key for JWT and session management"
+        default="super-secret-key-change-in-production",
+        description="Secret key for JWT and session management",
     )
     ALGORITHM: str = Field(default="HS256", description="JWT hashing algorithm")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=60 * 24 * 7, description="JWT expiration time in minutes")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=60 * 24 * 7, description="JWT expiration time in minutes"
+    )
 
     # ----------------------------------------------------------------------
     # Database Settings (PostgreSQL + PostGIS)
     # ----------------------------------------------------------------------
     POSTGRES_USER: str = Field(default="nexus_user", description="PostgreSQL username")
-    POSTGRES_PASSWORD: str = Field(default="nexus_secure_password_local", description="PostgreSQL password")
+    POSTGRES_PASSWORD: str = Field(
+        default="nexus_secure_password_local", description="PostgreSQL password"
+    )
     POSTGRES_SERVER: str = Field(default="localhost", description="PostgreSQL server host")
     POSTGRES_PORT: int = Field(default=5432, description="PostgreSQL server port")
     POSTGRES_DB: str = Field(default="nexus_db", description="PostgreSQL database name")
@@ -97,7 +108,9 @@ class Settings(BaseSettings):
     # ----------------------------------------------------------------------
     CHROMA_HOST: str = Field(default="localhost", description="ChromaDB server host")
     CHROMA_PORT: int = Field(default=8000, description="ChromaDB server port")
-    CHROMA_COLLECTION_NAME: str = Field(default="nexus_rag", description="Default ChromaDB collection name")
+    CHROMA_COLLECTION_NAME: str = Field(
+        default="nexus_rag", description="Default ChromaDB collection name"
+    )
 
     @property
     def CHROMA_URL(self) -> str:
@@ -108,7 +121,9 @@ class Settings(BaseSettings):
     # Message Broker Settings (RabbitMQ)
     # ----------------------------------------------------------------------
     RABBITMQ_USER: str = Field(default="nexus_rabbit", description="RabbitMQ username")
-    RABBITMQ_PASSWORD: str = Field(default="nexus_rabbit_pass_local", description="RabbitMQ password")
+    RABBITMQ_PASSWORD: str = Field(
+        default="nexus_rabbit_pass_local", description="RabbitMQ password"
+    )
     RABBITMQ_HOST: str = Field(default="localhost", description="RabbitMQ server host")
     RABBITMQ_PORT: int = Field(default=5672, description="RabbitMQ server port")
     RABBITMQ_VHOST: str = Field(default="/", description="RabbitMQ virtual host")
@@ -121,24 +136,40 @@ class Settings(BaseSettings):
     # ----------------------------------------------------------------------
     # LLM & AI Provider Settings
     # ----------------------------------------------------------------------
-    DEFAULT_LLM_PROVIDER: str = Field(default="groq", description="Default LLM provider (groq or gemini)")
-    GROQ_API_KEY: str | None = Field(default=None, description="Groq API key for free-tier LLM access")
+    DEFAULT_LLM_PROVIDER: str = Field(
+        default="groq", description="Default LLM provider (groq or gemini)"
+    )
+    GROQ_API_KEY: str | None = Field(
+        default=None, description="Groq API key for free-tier LLM access"
+    )
     GEMINI_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
-    EMBEDDING_MODEL: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", description="Local embedding model fallback")
-    
+    EMBEDDING_MODEL: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2",
+        description="Local embedding model fallback",
+    )
+
     # ----------------------------------------------------------------------
     # Rate Limiting & System Constraints (Free-Tier Optimized)
     # ----------------------------------------------------------------------
-    RATE_LIMIT_REQUESTS: int = Field(default=10, description="Max requests per window for Leaky Bucket middleware")
-    RATE_LIMIT_WINDOW_SECONDS: int = Field(default=1, description="Time window in seconds for rate limiting")
-    MAX_CONCURRENT_AGENT_TASKS: int = Field(default=3, description="Max concurrent background tasks to respect free-tier limits")
+    RATE_LIMIT_REQUESTS: int = Field(
+        default=10, description="Max requests per window for Leaky Bucket middleware"
+    )
+    RATE_LIMIT_WINDOW_SECONDS: int = Field(
+        default=1, description="Time window in seconds for rate limiting"
+    )
+    MAX_CONCURRENT_AGENT_TASKS: int = Field(
+        default=3, description="Max concurrent background tasks to respect free-tier limits"
+    )
 
     @model_validator(mode="after")
     def enforce_production_security(self) -> "Settings":
         """Prevent catastrophic misconfigurations in production."""
         if self.ENVIRONMENT == "production" and self.DEBUG:
             raise ValueError("DEBUG must be False in production environment")
-        if self.ENVIRONMENT == "production" and self.SECRET_KEY == "super-secret-key-change-in-production":
+        if (
+            self.ENVIRONMENT == "production"
+            and self.SECRET_KEY == "super-secret-key-change-in-production"
+        ):
             raise ValueError("SECRET_KEY must be changed in production environment")
         return self
 

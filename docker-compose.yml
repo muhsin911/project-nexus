@@ -37,6 +37,7 @@ services:
   # Note: Production will use Redis Cloud free tier.
   # --------------------------------------------------------------------------
   redis:
+    profiles: ["realtime"]
     image: redis:7.2-alpine
     container_name: nexus-redis
     restart: unless-stopped
@@ -137,12 +138,8 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-nexus_db}
       POSTGRES_SSL: ${POSTGRES_SSL:-false}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_USERNAME: ${REDIS_USERNAME:-}
-      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
-      REDIS_USE_TLS: ${REDIS_USE_TLS:-false}
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5174}
+      PORTFOLIO_ADMIN_TOKEN: ${PORTFOLIO_ADMIN_TOKEN:-}
       CHROMA_HOST: chromadb
       CHROMA_PORT: 8000
       RABBITMQ_USER: ${RABBITMQ_USER:-nexus_rabbit}
@@ -159,8 +156,6 @@ services:
       - ./alembic.ini:/app/alembic.ini
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     healthcheck:
       test:
@@ -185,7 +180,6 @@ services:
       - npm ci && npx vite --host=0.0.0.0 --port=5173 --strictPort
     environment:
       VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8001}
-      VITE_WEBSOCKET_URL: ${VITE_WEBSOCKET_URL:-ws://localhost:8001/ws}
     ports:
       - "${FRONTEND_HOST_PORT:-5174}:5173"
     volumes:
