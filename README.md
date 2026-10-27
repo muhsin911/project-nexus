@@ -93,7 +93,8 @@ backend and database.
    VITE_STATIC_DEPLOYMENT=true
    ```
 
-   Static mode uses the résumé, project, experience, skills, education, and
+   Static mode is the default unless this variable is explicitly set to
+   `false`. It uses the résumé, project, experience, skills, education, and
    certification data bundled with the frontend; it does not call the
    localhost API. Blog, DSA, and management routes are hidden until the backend
    is connected. The `frontend/public/_redirects` file enables SPA routing.

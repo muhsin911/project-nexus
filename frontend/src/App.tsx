@@ -85,7 +85,7 @@ const defaultProfile: PortfolioProfile = {
   ],
 };
 
-const staticDeployment = import.meta.env.VITE_STATIC_DEPLOYMENT === 'true';
+const staticDeployment = import.meta.env.VITE_STATIC_DEPLOYMENT !== 'false';
 
 const cvProjects: PortfolioContent[] = [
   {
