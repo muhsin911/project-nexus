@@ -24,8 +24,8 @@ const defaultProfile: PortfolioProfile = {
   full_name: 'Abdul Muhsin K',
   headline: 'Software Engineer | Python, Django & FastAPI',
   job_roles: ['Software Engineer', 'Python Developer', 'AI Engineer'],
-  about_title: 'Building full-stack systems that make work simpler.',
-  about: 'Software Engineer with 2+ years of experience building full-stack applications with Python, Django, FastAPI, and React. Developed 25+ REST API endpoints, improved API response times by 30%, and automated CI/CD workflows that cut deployment time by 50%. Experienced with Docker-based services and Generative AI (LLM/RAG) integration.',
+  about_title: 'Software that makes work simpler.',
+  about: 'I build full-stack applications that turn complex workflows into clear, reliable products. At Yatnam Technologies, I developed 25+ REST API endpoints and helped improve response times by 30%. I also streamlined development with Docker and CI/CD, reducing setup time by 40% and deployments by 50%. My work spans Python, Django, FastAPI, React, and applied generative AI.',
   location: 'Dubai, UAE',
   phone: '+971 55 355 2442',
   address: '',
@@ -189,15 +189,26 @@ function Portfolio() {
   const [loadingContent, setLoadingContent] = useState(true);
   const [portfolioError, setPortfolioError] = useState('');
   const [theme, setTheme] = useState(() => localStorage.getItem('nexus-theme') ?? 'dark');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedSkillIndex, setActiveSkillIndex] = useState(0);
+  const [skillsPaused, setSkillsPaused] = useState(false);
+  const [activeSection, setActiveSection] = useState('top');
   const [showTop, setShowTop] = useState(false);
   const [visibleProjectCount, setVisibleProjectCount] = useState(3);
   const [contactBusy, setContactBusy] = useState(false);
   const [contactFeedback, setContactFeedback] = useState('');
   const [activeRoleIndex, setActiveRoleIndex] = useState(0);
-  const skillsTrackRef = useRef<HTMLDivElement>(null);
-  const skillDragRef = useRef<{ pointerId: number; startX: number; scrollLeft: number } | null>(null);
+  const customPointerRef = useRef<HTMLDivElement>(null);
   const roleList = profile.job_roles.length ? profile.job_roles : defaultProfile.job_roles;
   const activeRole = roleList[activeRoleIndex % roleList.length] ?? defaultProfile.job_roles[0];
+  const socialLinks = profile.social_links.some((link) => (
+    link.icon.toLowerCase() === 'twitter' || link.icon.toLowerCase() === 'x'
+  ))
+    ? profile.social_links
+    : [
+      ...profile.social_links,
+      { label: 'Twitter', url: 'https://www.google.com/search?q=Twitter', icon: 'twitter' },
+    ];
   const visibleExperience = experience.length ? experience : cvExperience;
   const visibleSkills = skills.length ? skills : cvSkills;
   const visibleProjects = useMemo(() => {
@@ -205,6 +216,7 @@ function Portfolio() {
     return [...content, ...cvProjects.filter((project) => !managedSlugs.has(project.slug))]
       .sort((first, second) => Number(second.featured) - Number(first.featured));
   }, [content]);
+  const skillDragRef = useRef<{ pointerId: number; startX: number } | null>(null);
   const visibleSkillCategories = useMemo(() => {
     const categories = new Map<string, string[]>();
     visibleSkills.forEach((skill) => {
@@ -216,31 +228,34 @@ function Portfolio() {
     });
     return [...categories.entries()].map(([name, tools]) => [name, [...new Set(tools)]] as const);
   }, [visibleSkills]);
+  const activeSkillIndex = Math.min(
+    selectedSkillIndex,
+    Math.max(visibleSkillCategories.length - 1, 0),
+  );
 
   function startSkillDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.button !== 0 || !skillsTrackRef.current) return;
-    skillDragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      scrollLeft: skillsTrackRef.current.scrollLeft,
-    };
-    skillsTrackRef.current.classList.add('is-dragging');
+    if (event.button !== 0 || visibleSkillCategories.length < 2) return;
+    skillDragRef.current = { pointerId: event.pointerId, startX: event.clientX };
+    event.currentTarget.classList.add('is-dragging');
     event.currentTarget.setPointerCapture(event.pointerId);
-  }
-
-  function moveSkillDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!skillDragRef.current || !skillsTrackRef.current) return;
-    skillsTrackRef.current.scrollLeft =
-      skillDragRef.current.scrollLeft - (event.clientX - skillDragRef.current.startX);
+    setSkillsPaused(true);
   }
 
   function endSkillDrag(event: ReactPointerEvent<HTMLDivElement>) {
-    if (!skillDragRef.current) return;
+    const drag = skillDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
     skillDragRef.current = null;
-    skillsTrackRef.current?.classList.remove('is-dragging');
+    event.currentTarget.classList.remove('is-dragging');
+    const distance = event.clientX - drag.startX;
+    if (Math.abs(distance) > 40) {
+      setActiveSkillIndex((index) => (
+        index + (distance < 0 ? 1 : -1) + visibleSkillCategories.length
+      ) % visibleSkillCategories.length);
+    }
+    setSkillsPaused(false);
   }
 
   useEffect(() => {
@@ -249,12 +264,53 @@ function Portfolio() {
   }, [theme]);
 
   useEffect(() => {
+    const pointer = customPointerRef.current;
+    if (!pointer || window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
+
+    function movePointer(event: PointerEvent) {
+      if (event.pointerType === 'touch') return;
+      const pointerTarget = event.target instanceof Element
+        ? event.target.closest('a, button, input, textarea, select, [role="button"]')
+        : null;
+      pointer?.style.setProperty('--pointer-x', `${event.clientX}px`);
+      pointer?.style.setProperty('--pointer-y', `${event.clientY}px`);
+      pointer?.classList.add('is-visible');
+      pointer?.classList.toggle('is-active', Boolean(pointerTarget));
+    }
+
+    function hidePointer() {
+      pointer?.classList.remove('is-visible', 'is-active');
+    }
+
+    document.addEventListener('pointermove', movePointer);
+    document.addEventListener('pointerleave', hidePointer);
+    return () => {
+      document.removeEventListener('pointermove', movePointer);
+      document.removeEventListener('pointerleave', hidePointer);
+    };
+  }, []);
+
+  useEffect(() => {
     function onScroll() {
       setShowTop(window.scrollY > 480);
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    const sections = ['top', 'about', 'work', 'skills', 'experience', 'contact']
+      .map((id) => document.getElementById(id))
+      .filter((section): section is HTMLElement => section instanceof HTMLElement);
+    if (!sections.length) return;
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) setActiveSection(entry.target.id);
+      });
+    }, { rootMargin: '-22% 0px -65% 0px' });
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
@@ -268,6 +324,14 @@ function Portfolio() {
     }, 2800);
     return () => window.clearInterval(timer);
   }, [roleList]);
+
+  useEffect(() => {
+    if (visibleSkillCategories.length < 2 || skillsPaused) return;
+    const timer = window.setInterval(() => {
+      setActiveSkillIndex((index) => (index + 1) % visibleSkillCategories.length);
+    }, 4200);
+    return () => window.clearInterval(timer);
+  }, [skillsPaused, visibleSkillCategories.length]);
 
   useEffect(() => {
     let active = true;
@@ -342,38 +406,77 @@ function Portfolio() {
 
   return (
     <main className="portfolio-shell">
+      <div className="custom-pointer" ref={customPointerRef} aria-hidden="true"><span>+</span></div>
       <header className="topline">
         <a className="wordmark" href="#top" aria-label="Nexus, home">
-          <span className="wordmark-mark">{profile.full_name.slice(0, 1) || 'N'}.</span><span>{profile.full_name.toUpperCase()}</span>
+          <span>{profile.full_name.toUpperCase()}</span>
         </a>
-        <nav className="main-nav" aria-label="Main navigation">
-          <a href="#work">Work</a>
-          <a href="#about">About</a>
-          <a href="#skills">Skills</a>
-          <a href="#experience">Experience</a>
-          <a href="/blog">Blog</a>
-        </nav>
         <div className="header-actions">
-          <button className="theme-toggle" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} type="button" aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}>
-            <span aria-hidden="true">{theme === 'dark' ? '☼' : '◐'}</span> {theme === 'dark' ? 'Light' : 'Dark'}
+          <button
+            className="theme-toggle"
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            type="button"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24">
+              {theme === 'dark'
+                ? <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>
+                : <path d="M20.2 15.1A8.4 8.4 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z" />}
+            </svg>
+            <span className="theme-label">{theme === 'dark' ? 'Light' : 'Dark'}</span>
           </button>
-          <a className="nav-contact" href="#contact">Contact <span aria-hidden="true">↗</span></a>
+          <div className="dsa-menu">
+            <button
+              aria-controls="portfolio-menu"
+              aria-expanded={menuOpen}
+              aria-label={menuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              className="menu-toggle"
+              onClick={() => setMenuOpen((open) => !open)}
+              type="button"
+            >
+              <span className={`menu-icon${menuOpen ? ' is-open' : ''}`} aria-hidden="true">
+                <i />
+                <i />
+                <i />
+              </span>
+            </button>
+            {menuOpen && (
+              <nav className="menu-popover" id="portfolio-menu" aria-label="Main navigation">
+                <a href="/blog">Blog <span>↗</span></a>
+                <a href="/dsa">DSA <span>↗</span></a>
+              </nav>
+            )}
+          </div>
         </div>
       </header>
 
+      <nav className="portfolio-dock" aria-label="Portfolio sections">
+        <a href="#top" aria-label="Home" title="Home" aria-current={activeSection === 'top' ? 'location' : undefined}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10 8.5-7 8.5 7v10.5H14v-7h-4v7H3.5z" /></svg>
+        </a>
+        <a href="#about" aria-label="About" title="About" aria-current={activeSection === 'about' ? 'location' : undefined}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></svg>
+        </a>
+        <a href="#experience" aria-label="Experience" title="Experience" aria-current={activeSection === 'experience' ? 'location' : undefined}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1.5" /><path d="M8 9h8M8 13h8M8 16h4" /></svg>
+        </a>
+        <a href="#work" aria-label="Portfolio" title="Portfolio" aria-current={activeSection === 'work' ? 'location' : undefined}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="6" width="17" height="13" rx="1.5" /><path d="M8.5 6V4h7v2M3.5 11h17M10 11v2h4v-2" /></svg>
+        </a>
+        <a href="#contact" aria-label="Contact" title="Contact" aria-current={activeSection === 'contact' ? 'location' : undefined}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h16v12H9l-5 3z" /><path d="M8 10h8M8 14h5" /></svg>
+        </a>
+      </nav>
+
       <section className="hero section-wrap" id="top">
         <div className="hero-copy">
-          <p className="eyebrow"><span className="status-dot" /> {profile.location ? `${profile.location.toUpperCase()} · ` : ''}OPEN TO WHAT&apos;S NEXT</p>
-          <h1>Thoughtful code.<br /><em>Real-world</em> impact.</h1>
+          <p className="eyebrow">{profile.location || 'Software Engineer'}</p>
+          <h1>Thoughtful code.<br /><em>Real-world impact.</em></h1>
           <div className="hero-designation" aria-atomic="true" aria-live="polite">
-            <span>Working as</span>
             <span className="hero-designation-value" key={activeRole}>{activeRole}</span>
           </div>
-          <p className="hero-description">
-            {profile.about || defaultProfile.about}
-          </p>
           <div className="hero-actions">
-            <a className="button button-primary" href="#work">Explore the work <span aria-hidden="true">↘</span></a>
+            <a className="button button-primary" href="#work">View projects <span aria-hidden="true">↘</span></a>
             <a
               className="button button-quiet"
               href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/Software_Engineer_CV_Abdul_Muhsin_K.pdf'}
@@ -382,24 +485,43 @@ function Portfolio() {
               Download résumé <span aria-hidden="true">↓</span>
             </a>
           </div>
-          <p className="hero-footnote">A living portfolio — built with intention, always in progress.</p>
         </div>
 
-        <div className="hero-art" aria-label="Decorative three-dimensional desktop computer model">
+        <div className="hero-art" aria-label="Interactive three-dimensional desktop computer model">
           <Suspense fallback={<div className="scene-fallback" role="status">Loading desktop illustration…</div>}>
             <Scene />
           </Suspense>
         </div>
       </section>
+      <div className="hero-name-marquee" role="img" aria-label={profile.full_name}>
+        <div className="hero-name-track" aria-hidden="true">
+          <span>{profile.full_name}</span>
+        </div>
+      </div>
+
+      <section className="approach-section" id="about">
+        <div className="section-wrap approach-grid about-grid">
+          <div className="about-portrait-panel">
+            <img
+              className="about-portrait"
+              src="/images/profile.webp"
+              alt={`${profile.full_name} portrait`}
+              loading="lazy"
+            />
+            <span className="about-portrait-caption">{profile.full_name} · {profile.location}</span>
+          </div>
+          <div className="about-copy">
+            <p className="eyebrow">02 / ABOUT ME</p>
+            <h2>{profile.about_title || 'Software that makes work simpler.'}</h2>
+            <p className="approach-lead">{profile.about || defaultProfile.about}</p>
+          </div>
+        </div>
+      </section>
 
       <section className="work-section section-wrap" id="work">
         <div className="section-heading">
-          <p className="eyebrow">A FEW THINGS {profile.full_name ? `${profile.full_name.toUpperCase()} HAS` : 'I'} BEEN BUILDING</p>
+          <p className="eyebrow">03 / SELECTED PROJECTS</p>
           <h2>Work with a<br /><em>point of view.</em></h2>
-          <p className="section-intro">
-            Good software is more than a working demo. It&apos;s the structure,
-            choices, and small moments that make the whole thing feel right.
-          </p>
         </div>
         {portfolioError && (
           <p className="content-load-warning" role="status">
@@ -448,45 +570,32 @@ function Portfolio() {
         </div>
       </section>
 
-      <section className="approach-section" id="about">
-        <div className="section-wrap approach-grid about-grid">
-          <div className="about-portrait-panel">
-            <img
-              className="about-portrait"
-              src="/images/profile.webp"
-              alt={`${profile.full_name} portrait`}
-              loading="lazy"
-            />
-            <span className="about-portrait-caption">{profile.full_name} · {profile.location}</span>
-          </div>
-          <div className="about-copy">
-            <p className="eyebrow">02 / ABOUT ME</p>
-            <h2>{profile.about_title || 'Make it useful. Make it feel effortless.'}</h2>
-            <p className="approach-lead">{profile.about || defaultProfile.about}</p>
-          </div>
-        </div>
-      </section>
-
       <CpuSectionSlot />
 
       {visibleSkills.length > 0 && <section className="skills-section section-wrap" id="skills">
         <div className="section-heading">
-          <p className="eyebrow">03 / TOOLKIT</p>
+          <p className="eyebrow">04 / TOOLKIT</p>
           <h2>Tools for the<br /><em>work I do.</em></h2>
         </div>
         <div
           className="skills-carousel"
           onPointerCancel={endSkillDrag}
           onPointerDown={startSkillDrag}
-          onPointerMove={moveSkillDrag}
           onPointerUp={endSkillDrag}
+          onPointerEnter={() => setSkillsPaused(true)}
+          onPointerLeave={() => {
+            if (!skillDragRef.current) setSkillsPaused(false);
+          }}
           role="region"
           aria-label="Skill categories"
-          tabIndex={0}
         >
-          <div className="skills-track" ref={skillsTrackRef}>
-            {visibleSkillCategories.map(([category, tools]) => (
+          <div
+            className="skills-track"
+            style={{ transform: `translateX(-${activeSkillIndex * 100}%)` }}
+          >
+            {visibleSkillCategories.map(([category, tools], index) => (
               <article className="skill-category-card" key={category}>
+                <p className="eyebrow">{String(index + 1).padStart(2, '0')} / TOOLSET</p>
                 <h3>{category}</h3>
                 <div className="skill-tool-list">
                   {tools.map((tool) => (
@@ -500,11 +609,25 @@ function Portfolio() {
             ))}
           </div>
         </div>
+        {visibleSkillCategories.length > 1 && (
+          <div className="skills-pagination" role="group" aria-label="Choose a skill category">
+            {visibleSkillCategories.map(([category], index) => (
+              <button
+                aria-label={`Show ${category} skills`}
+                aria-pressed={activeSkillIndex === index}
+                className={activeSkillIndex === index ? 'is-active' : ''}
+                key={category}
+                onClick={() => setActiveSkillIndex(index)}
+                type="button"
+              />
+            ))}
+          </div>
+        )}
       </section>}
 
       {visibleExperience.length > 0 && <section className="experience-section section-wrap" id="experience">
         <div className="section-heading">
-          <p className="eyebrow">04 / EXPERIENCE</p>
+          <p className="eyebrow">05 / EXPERIENCE</p>
           <h2>A path shaped<br /><em>by making.</em></h2>
           <p className="section-intro">The teams, roles, and chapters that have shaped my work.</p>
         </div>
@@ -518,7 +641,7 @@ function Portfolio() {
 
       <section className="credentials-section section-wrap" aria-labelledby="education-heading">
         <div className="section-heading">
-          <p className="eyebrow">05 / EDUCATION &amp; CERTIFICATIONS</p>
+          <p className="eyebrow">06 / EDUCATION &amp; CERTIFICATIONS</p>
           <h2 id="education-heading">A foundation for<br /><em>what&apos;s next.</em></h2>
         </div>
         <div className="credentials-grid">
@@ -543,16 +666,32 @@ function Portfolio() {
             <p className="eyebrow">HAVE A GOOD ONE IN MIND?</p>
             <h2>Let&apos;s make<br /><em>something matter.</em></h2>
           </div>
-          <div className="footer-links">
-            {profile.social_links.map((link) => <a className="footer-link" href={link.url} key={link.label} target={link.url.startsWith('http') ? '_blank' : undefined} rel={link.url.startsWith('http') ? 'noreferrer' : undefined}><span className="social-icon" aria-hidden="true">{link.icon || link.label.slice(0, 1)}</span>{link.label} <span>Connect ↗</span></a>)}
-            {profile.email && <a className="footer-link" href={`mailto:${profile.email}`}>Email <span>{profile.email} ↗</span></a>}
+          <div className="footer-links" aria-label="Social profiles">
+            {socialLinks.map((link) => (
+              <a
+                aria-label={link.label}
+                className="footer-link"
+                href={link.url}
+                key={link.label}
+                rel="noreferrer"
+                target="_blank"
+                title={link.label}
+              >
+                <SocialIcon name={link.icon} />
+              </a>
+            ))}
+            {profile.email && (
+              <a aria-label="Email" className="footer-link" href={`mailto:${profile.email}`} title="Email">
+                <SocialIcon name="email" />
+              </a>
+            )}
           </div>
         </div>
         <div className="contact-details">
-          {profile.email && <a href={`mailto:${profile.email}`}><span>EMAIL</span>{profile.email} ↗</a>}
-          {profile.phone && <a href={`tel:${profile.phone.replace(/[^\d+]/g, '')}`}><span>PHONE</span>{profile.phone} ↗</a>}
-          {profile.address && <p><span>LOCATION</span>{profile.address}</p>}
-          {profile.booking_url && <a className="booking-link" href={profile.booking_url} target="_blank" rel="noreferrer"><span>BOOK A CALL</span>Choose a time that works ↗</a>}
+          {profile.email && <a href={`mailto:${profile.email}`}><SocialIcon name="email" /><span>EMAIL</span><strong>{profile.email}</strong></a>}
+          {profile.phone && <a href={`tel:${profile.phone.replace(/[^\d+]/g, '')}`}><SocialIcon name="phone" /><span>PHONE</span><strong>{profile.phone}</strong></a>}
+          {profile.address && <p><SocialIcon name="location" /><span>LOCATION</span><strong>{profile.address}</strong></p>}
+          {profile.booking_url && <a className="booking-link" href={profile.booking_url} target="_blank" rel="noreferrer"><SocialIcon name="calendar" /><span>BOOK A CALL</span><strong>Choose a time that works</strong></a>}
         </div>
         <form className="contact-form" onSubmit={submitContact}>
           <div className="form-row">
@@ -577,6 +716,32 @@ function Portfolio() {
       <button className={`scroll-top${showTop ? ' is-visible' : ''}`} type="button" aria-label="Scroll to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}>↑</button>
     </main>
   );
+}
+
+function SocialIcon({ name }: { name: string }) {
+  const icon = name.toLowerCase();
+  if (icon === 'linkedin') {
+    return <svg className="social-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 8.5H3.7V20h2.8V8.5ZM5.1 3.3a1.7 1.7 0 1 0 0 3.4 1.7 1.7 0 0 0 0-3.4ZM20.3 13.4c0-3.1-1.7-5.1-4.4-5.1-1.5 0-2.5.8-3 1.7V8.5h-2.8V20h2.8v-6.2c0-1.6.3-3.2 2.3-3.2s2.2 1.8 2.2 3.3V20h2.9v-6.6Z" /></svg>;
+  }
+  if (icon === 'github') {
+    return <svg className="social-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5a9.5 9.5 0 0 0-3 18.5c.5.1.7-.2.7-.5v-1.8c-2.8.6-3.4-1.2-3.4-1.2-.5-1.2-1.1-1.5-1.1-1.5-.9-.6.1-.6.1-.6 1 .1 1.5 1 1.5 1 .9 1.5 2.3 1.1 2.9.8.1-.7.4-1.1.6-1.4-2.2-.2-4.5-1.1-4.5-4.8 0-1.1.4-2 1-2.7-.1-.2-.4-1.3.1-2.7 0 0 .8-.3 2.8 1a9.5 9.5 0 0 1 5.1 0c2-1.3 2.8-1 2.8-1 .5 1.4.2 2.5.1 2.7.6.7 1 1.6 1 2.7 0 3.7-2.3 4.6-4.5 4.8.4.3.7.9.7 1.8v2.7c0 .3.2.6.7.5A9.5 9.5 0 0 0 12 2.5Z" /></svg>;
+  }
+  if (icon === 'twitter' || icon === 'x') {
+    return <svg className="social-icon social-icon-twitter" viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3L12 14.8 5.7 22H2.5l7.3-8.4L1.8 2h6.5l4.5 6.7L18.9 2Zm-1.1 17.9h1.7L7.3 4H5.5l12.3 15.9Z" /></svg>;
+  }
+  if (icon === 'email' || icon === 'mail') {
+    return <svg className="social-icon social-icon-email" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>;
+  }
+  if (icon === 'phone') {
+    return <svg className="social-icon social-icon-phone" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 3a14 14 0 0 1-6-6l3-2-2-5Z" /></svg>;
+  }
+  if (icon === 'location') {
+    return <svg className="social-icon social-icon-location" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z" /><circle cx="12" cy="10" r="2.5" /></svg>;
+  }
+  if (icon === 'calendar') {
+    return <svg className="social-icon social-icon-calendar" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></svg>;
+  }
+  return <svg className="social-icon social-icon-link" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.1 0l3-3A5 5 0 0 0 13 2.9l-1.7 1.7m2.7 6.4a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.7-1.7" /></svg>;
 }
 
 export default App;

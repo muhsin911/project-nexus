@@ -71,6 +71,15 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume(
         ).status_code == 401
         initial_profile = (await client.get(f"{base}/profile")).json()
         assert initial_profile["full_name"] == "Abdul Muhsin K"
+        assert initial_profile["about_title"] == "Software that makes work simpler."
+        assert initial_profile["about"] == (
+            "I build full-stack applications that turn complex workflows into clear, "
+            "reliable products. At Yatnam Technologies, I developed 25+ REST API "
+            "endpoints and helped improve response times by 30%. I also streamlined "
+            "development with Docker and CI/CD, reducing setup time by 40% and "
+            "deployments by 50%. My work spans Python, Django, FastAPI, React, and "
+            "applied generative AI."
+        )
         assert initial_profile["phone"] == "+971 55 355 2442"
         assert initial_profile["email"] == "amkmuhsinzsb@gmail.com"
         assert {link["label"] for link in initial_profile["social_links"]} == {"LinkedIn", "GitHub"}

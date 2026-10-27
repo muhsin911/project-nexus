@@ -6,17 +6,33 @@ import type { Group } from 'three';
 function DesktopComputer() {
   const { scene } = useGLTF('/models/desktop_pc/scene.gltf');
   const model = useRef<Group>(null);
+  const pointer = useRef({ x: 0, y: 0 });
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  useFrame(({ clock }) => {
-    if (!reduceMotion && model.current) {
-      model.current.rotation.y = -0.2 + Math.sin(clock.elapsedTime * 0.18) * 0.035;
-    }
+  useFrame(({ clock }, delta) => {
+    if (!model.current) return;
+    const idleTurn = reduceMotion ? 0 : Math.sin(clock.elapsedTime * 0.24) * 0.06;
+    const targetRotationY = -0.2 + pointer.current.x * 0.32 + idleTurn;
+    const targetRotationX = -0.01 - pointer.current.y * 0.12;
+    const smoothing = Math.min(delta * 4, 1);
+    model.current.rotation.y += (targetRotationY - model.current.rotation.y) * smoothing;
+    model.current.rotation.x += (targetRotationX - model.current.rotation.x) * smoothing;
+    model.current.position.y = reduceMotion ? 0 : Math.sin(clock.elapsedTime * 0.65) * 0.045;
   });
 
   return (
     <group ref={model} rotation={[-0.01, -0.2, -0.1]}>
       <primitive object={scene} scale={0.75} position={[0, -2.1, -1.3]} />
+      <mesh
+        position={[0, 0, -2]}
+        onPointerLeave={() => { pointer.current = { x: 0, y: 0 }; }}
+        onPointerMove={(event) => {
+          pointer.current = { x: event.pointer.x, y: event.pointer.y };
+        }}
+      >
+        <planeGeometry args={[16, 10]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
     </group>
   );
 }

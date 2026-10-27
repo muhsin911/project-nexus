@@ -170,13 +170,14 @@ DEFAULT_PROFILE: dict[str, object] = {
     "full_name": "Abdul Muhsin K",
     "headline": "Software Engineer | Python, Django & FastAPI",
     "job_roles": ["Software Engineer", "Python Developer", "AI Engineer"],
-    "about_title": "Building full-stack systems that make work simpler.",
+    "about_title": "Software that makes work simpler.",
     "about": (
-        "Software Engineer with 2+ years of experience building full-stack "
-        "applications with Python, Django, FastAPI, and React. Developed 25+ "
-        "REST API endpoints, improved API response times by 30%, and automated "
-        "CI/CD workflows that cut deployment time by 50%. Experienced with "
-        "Docker-based services and Generative AI (LLM/RAG) integration."
+        "I build full-stack applications that turn complex workflows into clear, "
+        "reliable products. At Yatnam Technologies, I developed 25+ REST API "
+        "endpoints and helped improve response times by 30%. I also streamlined "
+        "development with Docker and CI/CD, reducing setup time by 40% and "
+        "deployments by 50%. My work spans Python, Django, FastAPI, React, and "
+        "applied generative AI."
     ),
     "location": "Dubai, UAE",
     "phone": "+971 55 355 2442",

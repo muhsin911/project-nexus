@@ -46,8 +46,8 @@ The public `/blog` page lists published articles, with individual pages at
 article formatting, images, and safe links while dropping scripts, embedded
 content, event handlers, and unsafe URL schemes.
 
-The site uses a restrained animated background, a subtle decorative desktop
-scene, and one interactive 3D processor section. Skill categories form a
+The site uses a restrained animated background, a cursor-responsive floating
+desktop model, and one interactive 3D processor section. Skill categories form a
 mouse- and touch-draggable horizontal carousel. The large About-section
 portrait at `frontend/public/images/profile.webp` was copied from the original
 portfolio; replace that file to use a newer photo.
