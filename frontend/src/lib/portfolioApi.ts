@@ -108,6 +108,25 @@ export interface ExperienceEntry {
 }
 export type ExperienceInput = Omit<ExperienceEntry, 'id'>;
 
+export interface EducationEntry {
+  id: string;
+  degree: string;
+  institution: string;
+  period: string;
+  sort_order: number;
+  published: boolean;
+}
+export type EducationInput = Omit<EducationEntry, 'id'>;
+
+export interface CertificationEntry {
+  id: string;
+  name: string;
+  issuer: string;
+  sort_order: number;
+  published: boolean;
+}
+export type CertificationInput = Omit<CertificationEntry, 'id'>;
+
 export interface SkillEntry {
   id: string;
   name: string;
@@ -239,6 +258,14 @@ export function getExperience(): Promise<ExperienceEntry[]> {
   return request('/portfolio/experience');
 }
 
+export function getEducation(): Promise<EducationEntry[]> {
+  return request('/portfolio/education');
+}
+
+export function getCertifications(): Promise<CertificationEntry[]> {
+  return request('/portfolio/certifications');
+}
+
 export function getSkills(): Promise<SkillEntry[]> {
   return request('/portfolio/skills');
 }
@@ -351,6 +378,42 @@ export function saveExperience(entry: ExperienceInput, token: string, id?: strin
 
 export function deleteExperience(id: string, token: string): Promise<void> {
   return request(`/portfolio/experience/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
+export function getAdminEducation(token: string): Promise<EducationEntry[]> {
+  return request('/portfolio/admin/education', { headers: adminHeaders(token) });
+}
+
+export function saveEducation(entry: EducationInput, token: string, id?: string): Promise<EducationEntry> {
+  return request(`/portfolio/education${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteEducation(id: string, token: string): Promise<void> {
+  return request(`/portfolio/education/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
+export function getAdminCertifications(token: string): Promise<CertificationEntry[]> {
+  return request('/portfolio/admin/certifications', { headers: adminHeaders(token) });
+}
+
+export function saveCertification(
+  entry: CertificationInput,
+  token: string,
+  id?: string,
+): Promise<CertificationEntry> {
+  return request(`/portfolio/certifications${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteCertification(id: string, token: string): Promise<void> {
+  return request(`/portfolio/certifications/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
 }
 
 export function getAdminSkills(token: string): Promise<SkillEntry[]> {

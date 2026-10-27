@@ -3,12 +3,13 @@ Database Models Registry.
 Import all models here so Alembic can discover them for migrations.
 """
 
-from app.db.models.job import Job
 from app.db.models.portfolio import (
     DSACategory,
     DSAProblem,
     PortfolioBlogPost,
+    PortfolioCertification,
     PortfolioContent,
+    PortfolioEducation,
     PortfolioExperience,
     PortfolioFAQ,
     PortfolioImage,
@@ -22,9 +23,10 @@ from app.db.models.portfolio import (
 __all__ = [
     "DSACategory",
     "DSAProblem",
-    "Job",
-    "PortfolioContent",
     "PortfolioBlogPost",
+    "PortfolioCertification",
+    "PortfolioContent",
+    "PortfolioEducation",
     "PortfolioExperience",
     "PortfolioFAQ",
     "PortfolioImage",

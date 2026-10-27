@@ -26,7 +26,7 @@ class DSAProblem(Base, UUIDMixin, TimestampMixin):
     __table_args__ = (Index("ix_dsa_problems_solved_at", "solved_at"),)
 
     category_id: Mapped[str] = mapped_column(
-        ForeignKey("dsa_categories.id", ondelete="RESTRICT"), nullable=False
+        ForeignKey("dsa_categories.id", ondelete="RESTRICT"), nullable=False, index=True
     )
     category: Mapped["DSACategory"] = relationship(back_populates="problems")
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -115,6 +115,31 @@ class PortfolioExperience(Base, UUIDMixin, TimestampMixin):
     designation: Mapped[str] = mapped_column(String(180), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     year: Mapped[str] = mapped_column(String(60), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class PortfolioEducation(Base, UUIDMixin, TimestampMixin):
+    """An education entry displayed on the public portfolio."""
+
+    __tablename__ = "portfolio_education"
+    __table_args__ = (Index("ix_portfolio_education_sort", "sort_order"),)
+
+    degree: Mapped[str] = mapped_column(String(180), nullable=False)
+    institution: Mapped[str] = mapped_column(String(180), nullable=False)
+    period: Mapped[str] = mapped_column(String(80), nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class PortfolioCertification(Base, UUIDMixin, TimestampMixin):
+    """A certification displayed on the public portfolio."""
+
+    __tablename__ = "portfolio_certifications"
+    __table_args__ = (Index("ix_portfolio_certifications_sort", "sort_order"),)
+
+    name: Mapped[str] = mapped_column(String(240), nullable=False)
+    issuer: Mapped[str] = mapped_column(String(180), nullable=False, default="")
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

@@ -184,6 +184,31 @@ class ExperienceRead(ExperienceInput):
     id: str
 
 
+class EducationInput(BaseModel):
+    degree: str = Field(min_length=1, max_length=180)
+    institution: str = Field(min_length=1, max_length=180)
+    period: str = Field(min_length=1, max_length=80)
+    sort_order: int = Field(default=0, ge=0, le=10000)
+    published: bool = True
+
+
+class EducationRead(EducationInput):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+
+class CertificationInput(BaseModel):
+    name: str = Field(min_length=1, max_length=240)
+    issuer: str = Field(default="", max_length=180)
+    sort_order: int = Field(default=0, ge=0, le=10000)
+    published: bool = True
+
+
+class CertificationRead(CertificationInput):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+
 class SkillInput(BaseModel):
     name: str = Field(min_length=1, max_length=100)
     icon: str = Field(default="", max_length=120)

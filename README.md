@@ -1,8 +1,8 @@
 # Project NEXUS
 
 A personal portfolio with an authenticated content manager for profile details,
-featured projects, experience, categorized skills, blog articles, a résumé, and
-categorized DSA solutions.
+featured projects, experience, education, certifications, categorized skills,
+blog articles, a résumé, and categorized DSA solutions.
 
 ## Local development with Docker
 
@@ -27,17 +27,19 @@ docker compose up --build
 - Backend API docs: <http://localhost:8001/docs>
 
 Compose starts the React/Vite frontend, FastAPI backend, and PostgreSQL.
-Database migrations run before the API starts. Redis, ChromaDB, and RabbitMQ
-are not required for the portfolio; optional services and the AI dependency
-group are available for the separate agent features.
+Database migrations run before the API starts. Redis, ChromaDB, RabbitMQ, and
+the job-scraper/AI modules are deferred and are not part of the active portfolio,
+blog, or DSA API. Existing job rows are preserved in the
+`deferred_job_scraper_data` table rather than removed.
 
 The owner-only management interface is at `/manage`; sign-in issues a
 short-lived access token, and every management endpoint verifies it. Profile
-information, featured projects, experience, skills, blog articles, images,
-résumé files, DSA categories, and solved problems are stored in PostgreSQL.
-Draft entries remain private. Project lists prioritize featured work, then
-newer projects; the public portfolio initially shows three projects and offers
-a load-more button. Images are limited to JPEG, PNG, and WebP up to 5 MB;
+information, featured projects, experience, education, certifications, skills,
+blog articles, images, résumé files, DSA categories, and solved problems are
+stored in PostgreSQL. These sections can be managed dynamically in the content
+studio. Draft entries remain private. Project lists prioritize featured work,
+then newer projects; the public portfolio initially shows three projects and
+offers a load-more button. Images are limited to JPEG, PNG, and WebP up to 5 MB;
 résumé PDFs are limited to 10 MB.
 
 The public `/blog` page lists published articles, with individual pages at
