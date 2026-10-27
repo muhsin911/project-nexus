@@ -40,6 +40,7 @@ import {
   faCubesStacked,
   faWind,
 } from '@fortawesome/free-solid-svg-icons';
+import { useForm, ValidationError } from '@formspree/react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { BlogPage } from '@/components/BlogPage';
 import { CustomPointer } from '@/components/CustomPointer';
@@ -85,7 +86,6 @@ const defaultProfile: PortfolioProfile = {
 };
 
 const staticDeployment = import.meta.env.VITE_STATIC_DEPLOYMENT === 'true';
-const formspreeEndpoint = import.meta.env.VITE_FORMSPREE_ENDPOINT?.trim();
 
 const cvProjects: PortfolioContent[] = [
   {
@@ -221,6 +221,7 @@ function App() {
 }
 
 function Portfolio() {
+  const [formspreeState, handleFormspreeSubmit] = useForm('mqppqlwb');
   const [profile, setProfile] = useState(defaultProfile);
   const [content, setContent] = useState<PortfolioContent[]>([]);
   const [experience, setExperience] = useState<ExperienceEntry[]>([]);
@@ -504,28 +505,8 @@ function Portfolio() {
     setContactBusy(true);
     setContactFeedback('');
     try {
-      if (staticDeployment) {
-        if (!formspreeEndpoint) {
-          throw new Error('The contact form is not configured yet. Please email amkmuhsinzsb@gmail.com directly.');
-        }
-        const response = await fetch(formspreeEndpoint, {
-          method: 'POST',
-          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...message,
-            _replyto: message.email,
-            _subject: `${message.purpose}: ${message.subject}`,
-            _gotcha: message.website,
-          }),
-        });
-        if (!response.ok) {
-          throw new Error(`Your message could not be sent (Formspree returned ${response.status}). Please email me directly.`);
-        }
-        setContactFeedback('Thanks! Your message has been sent.');
-      } else {
-        const result = await sendContactMessage(message);
-        setContactFeedback(result.message);
-      }
+      const result = await sendContactMessage(message);
+      setContactFeedback(result.message);
       form.reset();
     } catch (error) {
       setContactFeedback(error instanceof Error ? error.message : 'Your message could not be sent.');
@@ -830,17 +811,53 @@ function Portfolio() {
             {profile.phone && <a href={`tel:${profile.phone.replace(/[^\d+]/g, '')}`}><SocialIcon name="phone" /><span>PHONE</span><strong>{profile.phone}</strong></a>}
             {profile.booking_url && <a className="booking-link" href={profile.booking_url} target="_blank" rel="noreferrer"><SocialIcon name="calendar" /><span>BOOK A CALL</span><strong>Choose a time that works</strong></a>}
           </div>
-          <form className="contact-form" onSubmit={submitContact}>
+          <form
+            className="contact-form"
+            onSubmit={staticDeployment ? handleFormspreeSubmit : submitContact}
+          >
+            {staticDeployment && <input name="_subject" type="hidden" value="Portfolio contact message" />}
             <div className="form-row">
-              <label>Your name<input autoComplete="name" maxLength={120} name="name" required /></label>
-              <label>Your email<input autoComplete="email" maxLength={254} name="email" required type="email" /></label>
+              <label>
+                Your name
+                <input autoComplete="name" maxLength={120} name="name" required />
+                {staticDeployment && <ValidationError errors={formspreeState.errors} field="name" />}
+              </label>
+              <label>
+                Your email
+                <input autoComplete="email" maxLength={254} name="email" required type="email" />
+                {staticDeployment && <ValidationError errors={formspreeState.errors} field="email" />}
+              </label>
             </div>
             <label>What would you like to discuss?<select name="purpose" defaultValue="Freelance"><option>Freelance</option><option>Interview</option><option>Consultation</option><option>Other</option></select></label>
-            <label>Subject<input maxLength={180} name="subject" required /></label>
-            <label>Message<textarea maxLength={5000} minLength={10} name="message" required rows={5} /></label>
-            <label className="contact-honeypot" aria-hidden="true">Website<input autoComplete="off" name="website" tabIndex={-1} /></label>
-            <button className="button button-primary" disabled={contactBusy} type="submit">{contactBusy ? 'Sending…' : 'Send message'} <span aria-hidden="true">↗</span></button>
-            {contactFeedback && <p className="contact-feedback" role="status">{contactFeedback}</p>}
+            <label>
+              Subject
+              <input maxLength={180} name="subject" required />
+              {staticDeployment && <ValidationError errors={formspreeState.errors} field="subject" />}
+            </label>
+            <label>
+              Message
+              <textarea maxLength={5000} minLength={10} name="message" required rows={5} />
+              {staticDeployment && <ValidationError errors={formspreeState.errors} field="message" />}
+            </label>
+            <label className="contact-honeypot" aria-hidden="true">
+              Website
+              <input autoComplete="off" name={staticDeployment ? '_gotcha' : 'website'} tabIndex={-1} />
+            </label>
+            <button
+              className="button button-primary"
+              disabled={staticDeployment ? formspreeState.submitting : contactBusy}
+              type="submit"
+            >
+              {(staticDeployment ? formspreeState.submitting : contactBusy) ? 'Sending…' : 'Send message'}
+              <span aria-hidden="true">↗</span>
+            </button>
+            {staticDeployment && (
+              <>
+                {formspreeState.succeeded && <p className="contact-feedback" role="status">Thanks! Your message has been sent.</p>}
+                <ValidationError className="contact-feedback" errors={formspreeState.errors} />
+              </>
+            )}
+            {!staticDeployment && contactFeedback && <p className="contact-feedback" role="status">{contactFeedback}</p>}
           </form>
         </div>
         <div className="footer-bottom">

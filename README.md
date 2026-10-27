@@ -87,21 +87,20 @@ backend and database.
 1. Connect this GitHub repository to Cloudflare Pages. Choose the `main`
    production branch, set the root directory to `frontend`, the build command
    to `npm ci && npm run build`, and the build output directory to `dist`.
-2. Set these **build-time** variables in Pages:
+2. Set this **build-time** variable in Pages:
 
    ```text
    VITE_STATIC_DEPLOYMENT=true
-   VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/<your-form-id>
    ```
 
    Static mode uses the résumé, project, experience, skills, education, and
    certification data bundled with the frontend; it does not call the
    localhost API. Blog, DSA, and management routes are hidden until the backend
    is connected. The `frontend/public/_redirects` file enables SPA routing.
-3. Create a Formspree form, set its allowed domain to the deployed site, and
-   place its endpoint URL in `VITE_FORMSPREE_ENDPOINT`. This is a public form
-   endpoint, not a secret key. Until it is configured, the form will direct
-   visitors to email you instead of showing a false success.
+3. The contact form uses Formspree's React integration and form ID `mqppqlwb`.
+   In Formspree, confirm the form's notification email and add the deployed
+   Pages domain to its allowed domains if domain restrictions are enabled.
+   The form ID is public and does not need to be stored as a secret.
 4. Trigger a new Pages deployment after changing build variables. Verify the
    résumé download, social/contact links, project image, and contact form.
 
