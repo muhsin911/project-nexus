@@ -61,7 +61,6 @@ import {
 } from '@/lib/portfolioApi';
 
 const Scene = lazy(() => import('@/components/3d/Scene').then(({ Scene: SceneComponent }) => ({ default: SceneComponent })));
-const CpuSection = lazy(() => import('@/components/CpuSection').then(({ CpuSection: Section }) => ({ default: Section })));
 
 const defaultProfile: PortfolioProfile = {
   full_name: 'Abdul Muhsin K',
@@ -213,39 +212,6 @@ function App() {
   return <Portfolio />;
 }
 
-function CpuSectionSlot() {
-  const [visible, setVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const element = sectionRef.current;
-    if (!element) return;
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setVisible(true);
-        observer.disconnect();
-      }
-    }, { rootMargin: '240px' });
-    observer.observe(element);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={sectionRef}>
-      {visible ? (
-        <Suspense fallback={<section className="cpu-section cpu-loading" aria-label="Loading interactive processor"><p>Loading processor…</p></section>}>
-          <CpuSection />
-        </Suspense>
-      ) : (
-        <section className="cpu-section cpu-loading" aria-label="Interactive processor section">
-          <div className="cpu-copy"><p className="eyebrow">A SMALL INTERACTIVE DETAIL</p><h2>Built to<br /><em>think.</em></h2></div>
-          <div className="cpu-canvas" aria-hidden="true" />
-        </section>
-      )}
-    </div>
-  );
-}
-
 function Portfolio() {
   const [profile, setProfile] = useState(defaultProfile);
   const [content, setContent] = useState<PortfolioContent[]>([]);
@@ -336,12 +302,13 @@ function Portfolio() {
     }
     skillDragRef.current = null;
     event.currentTarget.classList.remove('is-dragging');
-    const cards = skillsCarouselRef.current?.querySelectorAll<HTMLElement>('.skill-category-card');
-    const scrollLeft = skillsCarouselRef.current?.scrollLeft ?? 0;
+    const carousel = skillsCarouselRef.current;
+    const cards = carousel?.querySelectorAll<HTMLElement>('.skill-category-card');
+    const carouselLeft = carousel?.getBoundingClientRect().left ?? 0;
     let nearestIndex = 0;
     let nearestDistance = Number.POSITIVE_INFINITY;
     cards?.forEach((card, index) => {
-      const distance = Math.abs(card.offsetLeft - scrollLeft);
+      const distance = Math.abs(card.getBoundingClientRect().left - carouselLeft);
       if (distance < nearestDistance) {
         nearestDistance = distance;
         nearestIndex = index;
@@ -414,10 +381,10 @@ function Portfolio() {
     const activeCard = carousel?.querySelectorAll<HTMLElement>('.skill-category-card')[activeSkillIndex];
     if (!carousel || !activeCard || skillDragRef.current) return;
     carousel.scrollTo({
-      left: activeCard.offsetLeft,
-      behavior: skillsPaused ? 'auto' : 'smooth',
+      left: carousel.scrollLeft + activeCard.getBoundingClientRect().left - carousel.getBoundingClientRect().left,
+      behavior: 'smooth',
     });
-  }, [activeSkillIndex, skillsPaused]);
+  }, [activeSkillIndex]);
 
   function updateActiveSkillFromScroll() {
     if (skillScrollTimerRef.current !== null) {
@@ -427,10 +394,11 @@ function Portfolio() {
       const carousel = skillsCarouselRef.current;
       const cards = carousel?.querySelectorAll<HTMLElement>('.skill-category-card');
       if (!carousel || !cards?.length) return;
+      const carouselLeft = carousel.getBoundingClientRect().left;
       let nearestIndex = 0;
       let nearestDistance = Number.POSITIVE_INFINITY;
       cards.forEach((card, index) => {
-        const distance = Math.abs(card.offsetLeft - carousel.scrollLeft);
+        const distance = Math.abs(card.getBoundingClientRect().left - carouselLeft);
         if (distance < nearestDistance) {
           nearestDistance = distance;
           nearestIndex = index;
@@ -673,8 +641,6 @@ function Portfolio() {
         </div>
       </section>
 
-      <CpuSectionSlot />
-
       {visibleSkills.length > 0 && <section className="skills-section section-wrap" id="skills">
         <div className="section-heading">
           <p className="eyebrow">04 / TOOLKIT</p>
@@ -792,23 +758,25 @@ function Portfolio() {
             )}
           </div>
         </div>
-        <div className="contact-details">
-          {profile.email && <a href={`mailto:${profile.email}`}><SocialIcon name="email" /><span>EMAIL</span><strong>{profile.email}</strong></a>}
-          {profile.phone && <a href={`tel:${profile.phone.replace(/[^\d+]/g, '')}`}><SocialIcon name="phone" /><span>PHONE</span><strong>{profile.phone}</strong></a>}
-          {profile.booking_url && <a className="booking-link" href={profile.booking_url} target="_blank" rel="noreferrer"><SocialIcon name="calendar" /><span>BOOK A CALL</span><strong>Choose a time that works</strong></a>}
-        </div>
-        <form className="contact-form" onSubmit={submitContact}>
-          <div className="form-row">
-            <label>Your name<input autoComplete="name" maxLength={120} name="name" required /></label>
-            <label>Your email<input autoComplete="email" maxLength={254} name="email" required type="email" /></label>
+        <div className="contact-grid">
+          <div className="contact-details">
+            {profile.email && <a href={`mailto:${profile.email}`}><SocialIcon name="email" /><span>EMAIL</span><strong>{profile.email}</strong></a>}
+            {profile.phone && <a href={`tel:${profile.phone.replace(/[^\d+]/g, '')}`}><SocialIcon name="phone" /><span>PHONE</span><strong>{profile.phone}</strong></a>}
+            {profile.booking_url && <a className="booking-link" href={profile.booking_url} target="_blank" rel="noreferrer"><SocialIcon name="calendar" /><span>BOOK A CALL</span><strong>Choose a time that works</strong></a>}
           </div>
-          <label>What would you like to discuss?<select name="purpose" defaultValue="Freelance"><option>Freelance</option><option>Interview</option><option>Consultation</option><option>Other</option></select></label>
-          <label>Subject<input maxLength={180} name="subject" required /></label>
-          <label>Message<textarea maxLength={5000} minLength={10} name="message" required rows={5} /></label>
-          <label className="contact-honeypot" aria-hidden="true">Website<input autoComplete="off" name="website" tabIndex={-1} /></label>
-          <button className="button button-primary" disabled={contactBusy} type="submit">{contactBusy ? 'Sending…' : 'Send message'} <span aria-hidden="true">↗</span></button>
-          {contactFeedback && <p className="contact-feedback" role="status">{contactFeedback}</p>}
-        </form>
+          <form className="contact-form" onSubmit={submitContact}>
+            <div className="form-row">
+              <label>Your name<input autoComplete="name" maxLength={120} name="name" required /></label>
+              <label>Your email<input autoComplete="email" maxLength={254} name="email" required type="email" /></label>
+            </div>
+            <label>What would you like to discuss?<select name="purpose" defaultValue="Freelance"><option>Freelance</option><option>Interview</option><option>Consultation</option><option>Other</option></select></label>
+            <label>Subject<input maxLength={180} name="subject" required /></label>
+            <label>Message<textarea maxLength={5000} minLength={10} name="message" required rows={5} /></label>
+            <label className="contact-honeypot" aria-hidden="true">Website<input autoComplete="off" name="website" tabIndex={-1} /></label>
+            <button className="button button-primary" disabled={contactBusy} type="submit">{contactBusy ? 'Sending…' : 'Send message'} <span aria-hidden="true">↗</span></button>
+            {contactFeedback && <p className="contact-feedback" role="status">{contactFeedback}</p>}
+          </form>
+        </div>
         <div className="footer-bottom">
           <a className="wordmark" href="#top"><span className="wordmark-mark">{profile.full_name.slice(0, 1) || 'N'}.</span><span>MADE WITH INTENTION</span></a>
           <span>© {new Date().getFullYear()} · A work in progress, by design.</span>
