@@ -61,6 +61,15 @@ frontend/.env.*.local
 # -----------------------------------------------------------------------------
 # OS / IDE
 # -----------------------------------------------------------------------------
+# Local reference material and source documents (not part of the application)
+/Images/
+/Sample Project Ideas/
+/my_old_portfolio/
+/New folder/
+CV/AI_Engineer_CV_Abdul_Muhsin_K.docx.pdf
+CV/Python_Developer_CV_Abdul_Muhsin_K.docx.pdf
+CV/Software_Engineer_CV_Abdul_Muhsin_K.docx.pdf
+
 .DS_Store
 Thumbs.db
 .idea/

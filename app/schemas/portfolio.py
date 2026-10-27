@@ -6,6 +6,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl, StringConstraints, field_validator
 
+from app.core.html_sanitizer import sanitize_blog_html
+
 Slug = Annotated[str, StringConstraints(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=220)]
 
 
@@ -52,6 +54,7 @@ class PortfolioContentInput(BaseModel):
     repository_url: str | None = Field(default=None, max_length=2048)
     live_url: str | None = Field(default=None, max_length=2048)
     published: bool = True
+    featured: bool = False
     sort_order: int = Field(default=0, ge=0, le=10000)
     image_id: str | None = None
 
@@ -68,6 +71,30 @@ class PortfolioContentRead(PortfolioContentInput):
 
     id: str
     image: PortfolioImageRead | None = None
+
+
+class PortfolioBlogPostInput(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    slug: Slug
+    excerpt: str = Field(min_length=1, max_length=500)
+    body_html: str = Field(min_length=1, max_length=50000)
+    published: bool = False
+
+    @field_validator("body_html")
+    @classmethod
+    def sanitize_body_html(cls, value: str) -> str:
+        sanitized = sanitize_blog_html(value)
+        if not sanitized.strip():
+            raise ValueError("Add some article content using the supported HTML tags.")
+        return sanitized
+
+
+class PortfolioBlogPostRead(PortfolioBlogPostInput):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class PortfolioImageInput(BaseModel):
@@ -108,7 +135,10 @@ class PortfolioProfileInput(BaseModel):
     about_title: str = Field(default="", max_length=240)
     about: str = Field(default="", max_length=5000)
     location: str = Field(default="", max_length=160)
+    phone: str = Field(default="", max_length=40)
+    address: str = Field(default="", max_length=500)
     email: str = Field(default="", max_length=254)
+    booking_url: str = Field(default="", max_length=2048)
     expertise: list[str] = Field(default_factory=list, max_length=24)
     social_links: list["PortfolioSocialLink"] = Field(default_factory=list, max_length=16)
 
@@ -117,6 +147,13 @@ class PortfolioProfileInput(BaseModel):
     def validate_profile_email(cls, value: str) -> str:
         if value and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
             raise ValueError("Enter a valid email address.")
+        return value
+
+    @field_validator("booking_url")
+    @classmethod
+    def validate_booking_url(cls, value: str) -> str:
+        if value and not value.startswith(("https://", "http://")):
+            raise ValueError("Appointment links must use HTTP or HTTPS.")
         return value
 
 
@@ -179,6 +216,7 @@ class ContactMessage(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: str = Field(min_length=3, max_length=254)
     subject: str = Field(min_length=1, max_length=180)
+    purpose: Literal["Freelance", "Interview", "Consultation", "Other"] = "Other"
     message: str = Field(min_length=10, max_length=5000)
     website: str = Field(default="", max_length=200)
 
@@ -195,3 +233,42 @@ class ContactMessage(BaseModel):
         if "\r" in value or "\n" in value:
             raise ValueError("Line breaks are not allowed in this field.")
         return value
+
+
+class FAQInput(BaseModel):
+    question: str = Field(min_length=1, max_length=300)
+    answer: str = Field(min_length=1, max_length=5000)
+    sort_order: int = Field(default=0, ge=0, le=10000)
+    published: bool = True
+
+
+class FAQRead(FAQInput):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+
+
+class ShowcaseInput(BaseModel):
+    eyebrow: str = Field(default="", max_length=120)
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(min_length=1, max_length=5000)
+    image_id: str | None = None
+    action_label: str = Field(default="", max_length=80)
+    action_url: str = Field(default="", max_length=2048)
+    sort_order: int = Field(default=0, ge=0, le=10000)
+    published: bool = True
+
+    @field_validator("action_url")
+    @classmethod
+    def validate_action_url(cls, value: str) -> str:
+        if value and not (
+            value.startswith(("https://", "http://", "mailto:", "#"))
+            or (value.startswith("/") and not value.startswith("//"))
+        ):
+            raise ValueError("Slide links must be HTTP, HTTPS, an internal path, or mailto.")
+        return value
+
+
+class ShowcaseRead(ShowcaseInput):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    image: PortfolioImageRead | None = None

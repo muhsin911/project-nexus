@@ -24,11 +24,14 @@ from app.core.config import Settings, get_settings
 from app.db.models.portfolio import (
     DSACategory,
     DSAProblem,
+    PortfolioBlogPost,
     PortfolioContent,
     PortfolioExperience,
+    PortfolioFAQ,
     PortfolioImage,
     PortfolioProfile,
     PortfolioResume,
+    PortfolioShowcase,
     PortfolioSkill,
     PortfolioTestimonial,
 )
@@ -43,12 +46,18 @@ from app.schemas.portfolio import (
     DSAProblemRead,
     ExperienceInput,
     ExperienceRead,
+    FAQInput,
+    FAQRead,
+    PortfolioBlogPostInput,
+    PortfolioBlogPostRead,
     PortfolioContentInput,
     PortfolioContentRead,
     PortfolioImageInput,
     PortfolioImageRead,
     PortfolioProfileInput,
     ResumeStatus,
+    ShowcaseInput,
+    ShowcaseRead,
     SkillInput,
     SkillRead,
     TestimonialInput,
@@ -124,6 +133,7 @@ def content_read(content: PortfolioContent) -> PortfolioContentRead:
         repository_url=content.repository_url,
         live_url=content.live_url,
         published=content.published,
+        featured=content.featured,
         sort_order=content.sort_order,
         image_id=content.image_id,
         image=image_read(content.image) if content.image else None,
@@ -157,22 +167,51 @@ async def verify_admin_session(_: AdminAccess) -> Response:
 
 
 DEFAULT_PROFILE: dict[str, object] = {
-    "full_name": "Your Name",
-    "headline": "Software Engineer",
-    "job_roles": ["Software Engineer", "Full-stack Developer"],
-    "about_title": "Building useful things with care.",
-    "about": "",
-    "location": "",
-    "email": "",
-    "expertise": [],
-    "social_links": [],
+    "full_name": "Abdul Muhsin K",
+    "headline": "Software Engineer | Python, Django & FastAPI",
+    "job_roles": ["Software Engineer", "Python Developer", "AI Engineer"],
+    "about_title": "Building full-stack systems that make work simpler.",
+    "about": (
+        "Software Engineer with 2+ years of experience building full-stack "
+        "applications with Python, Django, FastAPI, and React. Developed 25+ "
+        "REST API endpoints, improved API response times by 30%, and automated "
+        "CI/CD workflows that cut deployment time by 50%. Experienced with "
+        "Docker-based services and Generative AI (LLM/RAG) integration."
+    ),
+    "location": "Dubai, UAE",
+    "phone": "+971 55 355 2442",
+    "address": "",
+    "email": "amkmuhsinzsb@gmail.com",
+    "booking_url": "",
+    "expertise": [
+        "Python & Django",
+        "FastAPI & REST APIs",
+        "React",
+        "PostgreSQL & MySQL",
+        "Docker & CI/CD",
+        "Generative AI & RAG",
+    ],
+    "social_links": [
+        {
+            "label": "LinkedIn",
+            "url": "https://linkedin.com/in/muhsin911",
+            "icon": "linkedin",
+        },
+        {
+            "label": "GitHub",
+            "url": "https://github.com/muhsin911",
+            "icon": "github",
+        },
+    ],
 }
 
 
 @router.get("/profile", response_model=PortfolioProfileInput)
 async def get_portfolio_profile(db: DatabaseSession) -> dict[str, object]:
     profile = await db.get(PortfolioProfile, "current")
-    return profile.data if profile else DEFAULT_PROFILE
+    return PortfolioProfileInput.model_validate(
+        profile.data if profile else DEFAULT_PROFILE
+    ).model_dump(mode="json")
 
 
 @router.put("/profile", response_model=PortfolioProfileInput)
@@ -379,14 +418,143 @@ async def delete_testimonial(entry_id: str, db: DatabaseSession, _: AdminAccess)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/faq", response_model=list[FAQRead])
+async def list_faqs(db: DatabaseSession) -> list[PortfolioFAQ]:
+    result = await db.execute(
+        select(PortfolioFAQ)
+        .where(PortfolioFAQ.published.is_(True))
+        .order_by(PortfolioFAQ.sort_order, PortfolioFAQ.created_at)
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/admin/faq", response_model=list[FAQRead])
+async def list_all_faqs(db: DatabaseSession, _: AdminAccess) -> list[PortfolioFAQ]:
+    result = await db.execute(
+        select(PortfolioFAQ).order_by(PortfolioFAQ.sort_order, PortfolioFAQ.created_at)
+    )
+    return list(result.scalars().all())
+
+
+@router.post("/faq", response_model=FAQRead, status_code=status.HTTP_201_CREATED)
+async def create_faq(entry: FAQInput, db: DatabaseSession, _: AdminAccess) -> PortfolioFAQ:
+    record = PortfolioFAQ(**entry.model_dump())
+    db.add(record)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.put("/faq/{entry_id}", response_model=FAQRead)
+async def update_faq(
+    entry_id: str, entry: FAQInput, db: DatabaseSession, _: AdminAccess
+) -> PortfolioFAQ:
+    record = await db.get(PortfolioFAQ, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="FAQ entry not found.")
+    for key, value in entry.model_dump().items():
+        setattr(record, key, value)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.delete("/faq/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_faq(entry_id: str, db: DatabaseSession, _: AdminAccess) -> Response:
+    record = await db.get(PortfolioFAQ, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="FAQ entry not found.")
+    await db.delete(record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+def showcase_read(record: PortfolioShowcase) -> ShowcaseRead:
+    return ShowcaseRead(
+        id=record.id,
+        eyebrow=record.eyebrow,
+        title=record.title,
+        description=record.description,
+        image_id=record.image_id,
+        action_label=record.action_label,
+        action_url=record.action_url,
+        sort_order=record.sort_order,
+        published=record.published,
+        image=image_read(record.image) if record.image else None,
+    )
+
+
+async def _list_showcase(db: AsyncSession, public: bool) -> list[ShowcaseRead]:
+    statement = select(PortfolioShowcase).options(selectinload(PortfolioShowcase.image))
+    if public:
+        statement = statement.where(PortfolioShowcase.published.is_(True))
+    result = await db.execute(
+        statement.order_by(PortfolioShowcase.sort_order, PortfolioShowcase.created_at)
+    )
+    return [showcase_read(record) for record in result.scalars().all()]
+
+
+@router.get("/showcase", response_model=list[ShowcaseRead])
+async def list_showcase(db: DatabaseSession) -> list[ShowcaseRead]:
+    return await _list_showcase(db, True)
+
+
+@router.get("/admin/showcase", response_model=list[ShowcaseRead])
+async def list_all_showcase(db: DatabaseSession, _: AdminAccess) -> list[ShowcaseRead]:
+    return await _list_showcase(db, False)
+
+
+async def validate_showcase_image(db: AsyncSession, image_id: str | None) -> None:
+    if image_id and await db.get(PortfolioImage, image_id) is None:
+        raise HTTPException(status_code=422, detail="Choose an existing portfolio image.")
+
+
+@router.post("/showcase", response_model=ShowcaseRead, status_code=status.HTTP_201_CREATED)
+async def create_showcase_slide(
+    entry: ShowcaseInput, db: DatabaseSession, _: AdminAccess
+) -> ShowcaseRead:
+    await validate_showcase_image(db, entry.image_id)
+    record = PortfolioShowcase(**entry.model_dump())
+    db.add(record)
+    await db.flush()
+    if record.image_id:
+        record.image = await db.get(PortfolioImage, record.image_id)
+    return showcase_read(record)
+
+
+@router.put("/showcase/{entry_id}", response_model=ShowcaseRead)
+async def update_showcase_slide(
+    entry_id: str, entry: ShowcaseInput, db: DatabaseSession, _: AdminAccess
+) -> ShowcaseRead:
+    record = await db.get(PortfolioShowcase, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Showcase slide not found.")
+    await validate_showcase_image(db, entry.image_id)
+    for key, value in entry.model_dump().items():
+        setattr(record, key, value)
+    await db.flush()
+    record.image = await db.get(PortfolioImage, record.image_id) if record.image_id else None
+    return showcase_read(record)
+
+
+@router.delete("/showcase/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_showcase_slide(entry_id: str, db: DatabaseSession, _: AdminAccess) -> Response:
+    record = await db.get(PortfolioShowcase, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Showcase slide not found.")
+    await db.delete(record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 def _send_contact_message(settings: Settings, data: ContactMessage) -> None:
     assert settings.SMTP_HOST and settings.SMTP_FROM_EMAIL and settings.PORTFOLIO_CONTACT_EMAIL
     message = EmailMessage()
-    message["Subject"] = f"Portfolio inquiry: {data.subject}"
+    message["Subject"] = f"Portfolio {data.purpose.lower()} inquiry: {data.subject}"
     message["From"] = settings.SMTP_FROM_EMAIL
     message["To"] = settings.PORTFOLIO_CONTACT_EMAIL
     message["Reply-To"] = data.email
-    message.set_content(f"From: {data.name} <{data.email}>\n\n{data.message}")
+    message.set_content(
+        f"Purpose: {data.purpose}\nFrom: {data.name} <{data.email}>\n\n{data.message}"
+    )
     with smtplib.SMTP(settings.SMTP_HOST, settings.SMTP_PORT, timeout=10) as smtp:
         if settings.SMTP_STARTTLS:
             smtp.starttls(context=ssl.create_default_context())
@@ -521,7 +689,7 @@ async def list_published_content(db: DatabaseSession) -> list[PortfolioContentRe
         select(PortfolioContent)
         .options(selectinload(PortfolioContent.image))
         .where(PortfolioContent.published.is_(True))
-        .order_by(PortfolioContent.sort_order, PortfolioContent.created_at.desc())
+        .order_by(PortfolioContent.featured.desc(), PortfolioContent.created_at.desc())
     )
     return [content_read(record) for record in result.scalars().all()]
 
@@ -549,7 +717,7 @@ async def list_all_content(
     result = await db.execute(
         select(PortfolioContent)
         .options(selectinload(PortfolioContent.image))
-        .order_by(PortfolioContent.sort_order, PortfolioContent.created_at.desc())
+        .order_by(PortfolioContent.featured.desc(), PortfolioContent.created_at.desc())
     )
     return [content_read(record) for record in result.scalars().all()]
 
@@ -568,6 +736,104 @@ async def create_content(
     if record.image_id:
         record.image = await db.get(PortfolioImage, record.image_id)
     return content_read(record)
+
+
+@router.get("/blog", response_model=list[PortfolioBlogPostRead])
+async def list_published_blog_posts(db: DatabaseSession) -> list[PortfolioBlogPost]:
+    result = await db.execute(
+        select(PortfolioBlogPost)
+        .where(PortfolioBlogPost.published.is_(True))
+        .order_by(PortfolioBlogPost.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/blog/{slug}", response_model=PortfolioBlogPostRead)
+async def get_published_blog_post(slug: str, db: DatabaseSession) -> PortfolioBlogPost:
+    post = await db.scalar(
+        select(PortfolioBlogPost).where(
+            PortfolioBlogPost.slug == slug,
+            PortfolioBlogPost.published.is_(True),
+        )
+    )
+    if post is None:
+        raise HTTPException(status_code=404, detail="Published blog post not found.")
+    return post
+
+
+@router.get("/admin/blog", response_model=list[PortfolioBlogPostRead])
+async def list_all_blog_posts(
+    db: DatabaseSession,
+    _: AdminAccess,
+) -> list[PortfolioBlogPost]:
+    result = await db.execute(
+        select(PortfolioBlogPost).order_by(PortfolioBlogPost.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+async def validate_blog_slug(
+    db: AsyncSession,
+    post: PortfolioBlogPostInput,
+    current_id: str | None = None,
+) -> None:
+    existing_id = await db.scalar(
+        select(PortfolioBlogPost.id).where(
+            PortfolioBlogPost.slug == post.slug,
+            PortfolioBlogPost.id != (current_id or ""),
+        )
+    )
+    if existing_id:
+        raise HTTPException(status_code=409, detail="A blog post already uses this slug.")
+
+
+@router.post(
+    "/blog",
+    response_model=PortfolioBlogPostRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_blog_post(
+    post: PortfolioBlogPostInput,
+    db: DatabaseSession,
+    _: AdminAccess,
+) -> PortfolioBlogPost:
+    await validate_blog_slug(db, post)
+    record = PortfolioBlogPost(**post.model_dump())
+    db.add(record)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.put("/blog/{post_id}", response_model=PortfolioBlogPostRead)
+async def update_blog_post(
+    post_id: str,
+    post: PortfolioBlogPostInput,
+    db: DatabaseSession,
+    _: AdminAccess,
+) -> PortfolioBlogPost:
+    record = await db.get(PortfolioBlogPost, post_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Blog post not found.")
+    await validate_blog_slug(db, post, current_id=post_id)
+    for key, value in post.model_dump().items():
+        setattr(record, key, value)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.delete("/blog/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_blog_post(
+    post_id: str,
+    db: DatabaseSession,
+    _: AdminAccess,
+) -> Response:
+    record = await db.get(PortfolioBlogPost, post_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Blog post not found.")
+    await db.delete(record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.put("/content/{content_id}", response_model=PortfolioContentRead)

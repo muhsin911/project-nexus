@@ -43,12 +43,26 @@ export interface PortfolioContent {
   repository_url: string | null;
   live_url: string | null;
   published: boolean;
+  featured: boolean;
   sort_order: number;
   image_id: string | null;
   image: PortfolioImage | null;
 }
 
 export type PortfolioContentInput = Omit<PortfolioContent, 'id' | 'image'>;
+
+export interface PortfolioBlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  body_html: string;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PortfolioBlogPostInput = Omit<PortfolioBlogPost, 'id' | 'created_at' | 'updated_at'>;
 
 export interface ResumeStatus {
   available: boolean;
@@ -75,7 +89,10 @@ export interface PortfolioProfile {
   about_title: string;
   about: string;
   location: string;
+  phone: string;
+  address: string;
   email: string;
+  booking_url: string;
   expertise: string[];
   social_links: PortfolioSocialLink[];
 }
@@ -112,6 +129,29 @@ export interface TestimonialEntry {
   published: boolean;
 }
 export type TestimonialInput = Omit<TestimonialEntry, 'id' | 'image'>;
+
+export interface FAQEntry {
+  id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+  published: boolean;
+}
+export type FAQInput = Omit<FAQEntry, 'id'>;
+
+export interface ShowcaseSlide {
+  id: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  image_id: string | null;
+  image: PortfolioImage | null;
+  action_label: string;
+  action_url: string;
+  sort_order: number;
+  published: boolean;
+}
+export type ShowcaseInput = Omit<ShowcaseSlide, 'id' | 'image'>;
 
 const configuredApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001';
 export const apiBase = configuredApiBase.replace(/\/+$/, '').endsWith('/api/v1')
@@ -163,6 +203,34 @@ export function getPublishedContent(): Promise<PortfolioContent[]> {
   return request('/portfolio/content');
 }
 
+export function getPublishedBlogPosts(): Promise<PortfolioBlogPost[]> {
+  return request('/portfolio/blog');
+}
+
+export function getPublishedBlogPost(slug: string): Promise<PortfolioBlogPost> {
+  return request(`/portfolio/blog/${encodeURIComponent(slug)}`);
+}
+
+export function getAdminBlogPosts(token: string): Promise<PortfolioBlogPost[]> {
+  return request('/portfolio/admin/blog', { headers: adminHeaders(token) });
+}
+
+export function saveBlogPost(
+  post: PortfolioBlogPostInput,
+  token: string,
+  id?: string,
+): Promise<PortfolioBlogPost> {
+  return request(`/portfolio/blog${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(post),
+  });
+}
+
+export function deleteBlogPost(id: string, token: string): Promise<void> {
+  return request(`/portfolio/blog/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
 export function getPortfolioProfile(): Promise<PortfolioProfile> {
   return request('/portfolio/profile');
 }
@@ -179,10 +247,19 @@ export function getTestimonials(): Promise<TestimonialEntry[]> {
   return request('/portfolio/testimonials');
 }
 
+export function getFaqs(): Promise<FAQEntry[]> {
+  return request('/portfolio/faq');
+}
+
+export function getShowcase(): Promise<ShowcaseSlide[]> {
+  return request('/portfolio/showcase');
+}
+
 export function sendContactMessage(data: {
   name: string;
   email: string;
   subject: string;
+  purpose: 'Freelance' | 'Interview' | 'Consultation' | 'Other';
   message: string;
   website: string;
 }): Promise<{ message: string }> {
@@ -191,6 +268,42 @@ export function sendContactMessage(data: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
+}
+
+export function getAdminFaqs(token: string): Promise<FAQEntry[]> {
+  return request('/portfolio/admin/faq', { headers: adminHeaders(token) });
+}
+
+export function saveFaq(entry: FAQInput, token: string, id?: string): Promise<FAQEntry> {
+  return request(`/portfolio/faq${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteFaq(id: string, token: string): Promise<void> {
+  return request(`/portfolio/faq/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
+}
+
+export function getAdminShowcase(token: string): Promise<ShowcaseSlide[]> {
+  return request('/portfolio/admin/showcase', { headers: adminHeaders(token) });
+}
+
+export function saveShowcase(
+  entry: ShowcaseInput,
+  token: string,
+  id?: string,
+): Promise<ShowcaseSlide> {
+  return request(`/portfolio/showcase${id ? `/${id}` : ''}`, {
+    method: id ? 'PUT' : 'POST',
+    headers: adminJsonHeaders(token),
+    body: JSON.stringify(entry),
+  });
+}
+
+export function deleteShowcase(id: string, token: string): Promise<void> {
+  return request(`/portfolio/showcase/${id}`, { method: 'DELETE', headers: adminHeaders(token) });
 }
 
 export function getResumeStatus(): Promise<ResumeStatus> {

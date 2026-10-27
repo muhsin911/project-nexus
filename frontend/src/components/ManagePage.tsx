@@ -27,8 +27,9 @@ import {
   type ResumeStatus,
 } from '@/lib/portfolioApi';
 import { StructuredEditors } from '@/components/StructuredEditors';
+import { BlogEditor } from '@/components/BlogEditor';
 
-type Panel = 'site' | 'content' | 'dsa' | 'images' | 'resume';
+type Panel = 'site' | 'content' | 'blog' | 'dsa' | 'images' | 'resume';
 
 const emptyContent: PortfolioContentInput = {
   title: '',
@@ -40,6 +41,7 @@ const emptyContent: PortfolioContentInput = {
   repository_url: null,
   live_url: null,
   published: true,
+  featured: false,
   sort_order: 0,
   image_id: null,
 };
@@ -308,6 +310,7 @@ export function ManagePage() {
       repository_url: item.repository_url,
       live_url: item.live_url,
       published: item.published,
+      featured: item.featured,
       sort_order: item.sort_order,
       image_id: item.image_id,
     });
@@ -375,6 +378,7 @@ export function ManagePage() {
               {([
                 ['site', 'Profile & sections', 'CMS'],
                 ['content', 'Projects', content.length],
+                ['blog', 'Blog', 'HTML'],
                 ['dsa', 'DSA library', problems.length],
                 ['images', 'Images', images.length],
                 ['resume', 'Résumé', resume.available ? 'LIVE' : '—'],
@@ -413,6 +417,7 @@ export function ManagePage() {
                       <label>Display order<input max={10000} min={0} onChange={(event) => setContentForm({ ...contentForm, sort_order: Number(event.currentTarget.value) })} type="number" value={contentForm.sort_order} /></label>
                     </div>
                     <label className="checkbox-field"><input checked={contentForm.published} onChange={(event) => setContentForm({ ...contentForm, published: event.currentTarget.checked })} type="checkbox" /> Publish this story</label>
+                    <label className="checkbox-field"><input checked={contentForm.featured} onChange={(event) => setContentForm({ ...contentForm, featured: event.currentTarget.checked })} type="checkbox" /> Feature this project</label>
                     <div className="form-actions">
                       {contentEditId && <button className="manage-signout" onClick={() => { setContentEditId(undefined); setContentForm(emptyContent); }} type="button">Cancel edit</button>}
                       <button className="button button-dark" disabled={busy} type="submit">{busy ? 'Saving…' : contentEditId ? 'Save project' : 'Add project'} <span>↗</span></button>
@@ -424,7 +429,7 @@ export function ManagePage() {
                   <ul className="manage-problem-list">
                     {content.map((item) => (
                       <li key={item.id}>
-                        <div><strong>{item.title}</strong><span>{item.published ? 'Published' : 'Draft'} · /{item.slug}</span></div>
+                        <div><strong>{item.title}</strong><span>{item.published ? 'Published' : 'Draft'}{item.featured ? ' · Featured' : ''} · /{item.slug}</span></div>
                         <div className="manage-item-actions"><button onClick={() => editContent(item)} type="button">Edit</button><button disabled={busy} onClick={() => void handleDeleteContent(item)} type="button">Delete</button></div>
                       </li>
                     ))}
@@ -433,6 +438,8 @@ export function ManagePage() {
                 </section>
               </>
             )}
+
+            {panel === 'blog' && <BlogEditor token={token} />}
 
             {panel === 'site' && <StructuredEditors images={images} token={token} />}
 

@@ -1,22 +1,32 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   deleteExperience,
+  deleteFaq,
+  deleteShowcase,
   deleteSkill,
   deleteTestimonial,
   getAdminExperience,
+  getAdminFaqs,
+  getAdminShowcase,
   getAdminSkills,
   getAdminTestimonials,
   getPortfolioProfile,
   saveExperience,
+  saveFaq,
   savePortfolioProfile,
+  saveShowcase,
   saveSkill,
   saveTestimonial,
   type ExperienceEntry,
   type ExperienceInput,
+  type FAQEntry,
+  type FAQInput,
   type PortfolioImage,
   type PortfolioProfile,
   type SkillEntry,
   type SkillInput,
+  type ShowcaseInput,
+  type ShowcaseSlide,
   type TestimonialEntry,
   type TestimonialInput,
 } from '@/lib/portfolioApi';
@@ -28,7 +38,10 @@ const emptyProfile: PortfolioProfile = {
   about_title: '',
   about: '',
   location: '',
+  phone: '',
+  address: '',
   email: '',
+  booking_url: '',
   expertise: [],
   social_links: [],
 };
@@ -59,6 +72,18 @@ const emptyTestimonial: TestimonialInput = {
   published: true,
 };
 
+const emptyFaq: FAQInput = { question: '', answer: '', sort_order: 0, published: true };
+const emptyShowcase: ShowcaseInput = {
+  eyebrow: '',
+  title: '',
+  description: '',
+  image_id: null,
+  action_label: '',
+  action_url: '',
+  sort_order: 0,
+  published: true,
+};
+
 interface Props {
   token: string;
   images: PortfolioImage[];
@@ -69,12 +94,18 @@ export function StructuredEditors({ token, images }: Props) {
   const [experience, setExperience] = useState<ExperienceEntry[]>([]);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [testimonials, setTestimonials] = useState<TestimonialEntry[]>([]);
+  const [faqs, setFaqs] = useState<FAQEntry[]>([]);
+  const [slides, setSlides] = useState<ShowcaseSlide[]>([]);
   const [experienceForm, setExperienceForm] = useState(emptyExperience);
   const [skillForm, setSkillForm] = useState(emptySkill);
   const [testimonialForm, setTestimonialForm] = useState(emptyTestimonial);
+  const [faqForm, setFaqForm] = useState(emptyFaq);
+  const [showcaseForm, setShowcaseForm] = useState(emptyShowcase);
   const [experienceId, setExperienceId] = useState<string>();
   const [skillId, setSkillId] = useState<string>();
   const [testimonialId, setTestimonialId] = useState<string>();
+  const [faqId, setFaqId] = useState<string>();
+  const [showcaseId, setShowcaseId] = useState<string>();
   const [feedback, setFeedback] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -82,17 +113,21 @@ export function StructuredEditors({ token, images }: Props) {
     let active = true;
     async function load() {
       try {
-        const [nextProfile, nextExperience, nextSkills, nextTestimonials] = await Promise.all([
+        const [nextProfile, nextExperience, nextSkills, nextTestimonials, nextFaqs, nextShowcase] = await Promise.all([
           getPortfolioProfile(),
           getAdminExperience(token),
           getAdminSkills(token),
           getAdminTestimonials(token),
+          getAdminFaqs(token),
+          getAdminShowcase(token),
         ]);
         if (!active) return;
         setProfile(nextProfile);
         setExperience(nextExperience);
         setSkills(nextSkills);
         setTestimonials(nextTestimonials);
+        setFaqs(nextFaqs);
+        setSlides(nextShowcase);
       } catch (error) {
         if (active) {
           setFeedback(error instanceof Error ? error.message : 'Portfolio content could not be loaded.');
@@ -134,7 +169,10 @@ export function StructuredEditors({ token, images }: Props) {
         about_title: String(form.get('about_title') ?? ''),
         about: String(form.get('about') ?? ''),
         location: String(form.get('location') ?? ''),
+        phone: String(form.get('phone') ?? ''),
+        address: String(form.get('address') ?? ''),
         email: String(form.get('email') ?? ''),
+        booking_url: String(form.get('booking_url') ?? ''),
         expertise: String(form.get('expertise') ?? '').split('\n').map((value) => value.trim()).filter(Boolean),
         social_links: socials,
       };
@@ -177,12 +215,34 @@ export function StructuredEditors({ token, images }: Props) {
     });
   }
 
+  function submitFaq(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void run(async () => {
+      await saveFaq(faqForm, token, faqId);
+      setFaqs(await getAdminFaqs(token));
+      setFaqForm(emptyFaq);
+      setFaqId(undefined);
+      setFeedback('FAQ saved.');
+    });
+  }
+
+  function submitShowcase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void run(async () => {
+      await saveShowcase(showcaseForm, token, showcaseId);
+      setSlides(await getAdminShowcase(token));
+      setShowcaseForm(emptyShowcase);
+      setShowcaseId(undefined);
+      setFeedback('Carousel slide saved.');
+    });
+  }
+
   return (
     <div className="structured-editors">
       {feedback && <p className="manage-feedback" role="status">{feedback}</p>}
       <section className="manage-card">
         <div className="manage-card-heading"><div><span>01</span><h2>Profile &amp; site identity</h2></div><p>HOME · ABOUT · SOCIAL</p></div>
-        <p className="manage-help">Set your name, roles, introduction, expertise, contact email, and social profile links. Social links use one per line: label | URL | icon name.</p>
+        <p className="manage-help">Edit identity, location, direct contact details, booking link, expertise, and social profiles.</p>
         <form className="problem-form" key={JSON.stringify(profile)} onSubmit={submitProfile}>
           <div className="form-row">
             <label>Name<input name="full_name" maxLength={160} required defaultValue={profile.full_name} /></label>
@@ -195,6 +255,11 @@ export function StructuredEditors({ token, images }: Props) {
             <label>Location<input name="location" maxLength={160} defaultValue={profile.location} /></label>
             <label>Contact email<input name="email" maxLength={254} type="email" defaultValue={profile.email} /></label>
           </div>
+          <div className="form-row">
+            <label>Phone number<input name="phone" maxLength={40} type="tel" defaultValue={profile.phone} /></label>
+            <label>Address / public location<input name="address" maxLength={500} defaultValue={profile.address} /></label>
+          </div>
+          <label>Appointment booking URL<input name="booking_url" maxLength={2048} type="url" placeholder="https://cal.com/your-name" defaultValue={profile.booking_url} /></label>
           <label>Expertise <span className="field-hint">One item per line</span><textarea name="expertise" rows={3} defaultValue={profile.expertise.join('\n')} /></label>
           <label>Social links <span className="field-hint">Label | https://url | icon-name</span><textarea name="social_links" rows={4} defaultValue={profile.social_links.map(({ label, url, icon }) => `${label} | ${url} | ${icon}`).join('\n')} /></label>
           <button className="button button-primary" disabled={busy} type="submit">Save profile</button>
@@ -253,6 +318,43 @@ export function StructuredEditors({ token, images }: Props) {
           <button className="button button-primary" disabled={busy} type="submit">{testimonialId ? 'Update testimonial' : 'Add testimonial'}</button>
         </form>
         <ItemList items={testimonials} title={(entry) => `${entry.name} · ${entry.designation}`} onEdit={(entry) => { setTestimonialId(entry.id); setTestimonialForm({ name: entry.name, designation: entry.designation, content: entry.content, image_id: entry.image_id, sort_order: entry.sort_order, published: entry.published }); }} onDelete={(entry) => void run(async () => { await deleteTestimonial(entry.id, token); setTestimonials(await getAdminTestimonials(token)); })} />
+      </section>
+
+      <section className="manage-card">
+        <div className="manage-card-heading"><div><span>05</span><h2>{faqId ? 'Edit FAQ' : 'Add a frequently asked question'}</h2></div><p>HELPFUL DETAILS</p></div>
+        <form className="problem-form" onSubmit={submitFaq}>
+          <label>Question<input maxLength={300} required value={faqForm.question} onChange={(event) => setFaqForm({ ...faqForm, question: event.currentTarget.value })} /></label>
+          <label>Answer<textarea maxLength={5000} required rows={4} value={faqForm.answer} onChange={(event) => setFaqForm({ ...faqForm, answer: event.currentTarget.value })} /></label>
+          <div className="form-row">
+            <label>Display order<input min={0} type="number" value={faqForm.sort_order} onChange={(event) => setFaqForm({ ...faqForm, sort_order: Number(event.currentTarget.value) })} /></label>
+            <label className="check-label"><input type="checkbox" checked={faqForm.published} onChange={(event) => setFaqForm({ ...faqForm, published: event.currentTarget.checked })} /> Visible on site</label>
+          </div>
+          <button className="button button-primary" disabled={busy} type="submit">{faqId ? 'Update FAQ' : 'Add FAQ'}</button>
+        </form>
+        <ItemList items={faqs} title={(entry) => entry.question} onEdit={(entry) => { setFaqId(entry.id); setFaqForm({ question: entry.question, answer: entry.answer, sort_order: entry.sort_order, published: entry.published }); }} onDelete={(entry) => void run(async () => { await deleteFaq(entry.id, token); setFaqs(await getAdminFaqs(token)); })} />
+      </section>
+
+      <section className="manage-card">
+        <div className="manage-card-heading"><div><span>06</span><h2>{showcaseId ? 'Edit carousel slide' : 'Add a carousel slide'}</h2></div><p>HOMEPAGE HIGHLIGHTS</p></div>
+        <p className="manage-help">Slides rotate automatically. Add optional imagery and a button to guide visitors to a project, service, or booking page.</p>
+        <form className="problem-form" onSubmit={submitShowcase}>
+          <div className="form-row">
+            <label>Small label<input maxLength={120} value={showcaseForm.eyebrow} onChange={(event) => setShowcaseForm({ ...showcaseForm, eyebrow: event.currentTarget.value })} /></label>
+            <label>Slide title<input maxLength={200} required value={showcaseForm.title} onChange={(event) => setShowcaseForm({ ...showcaseForm, title: event.currentTarget.value })} /></label>
+          </div>
+          <label>Description<textarea maxLength={5000} required rows={4} value={showcaseForm.description} onChange={(event) => setShowcaseForm({ ...showcaseForm, description: event.currentTarget.value })} /></label>
+          <div className="form-row">
+            <label>Slide image<select value={showcaseForm.image_id ?? ''} onChange={(event) => setShowcaseForm({ ...showcaseForm, image_id: event.currentTarget.value || null })}><option value="">Generated visual</option>{images.map((image) => <option key={image.id} value={image.id}>{image.filename}</option>)}</select></label>
+            <label>Display order<input min={0} type="number" value={showcaseForm.sort_order} onChange={(event) => setShowcaseForm({ ...showcaseForm, sort_order: Number(event.currentTarget.value) })} /></label>
+          </div>
+          <div className="form-row">
+            <label>Button label<input maxLength={80} value={showcaseForm.action_label} onChange={(event) => setShowcaseForm({ ...showcaseForm, action_label: event.currentTarget.value })} /></label>
+            <label>Button link<input maxLength={2048} placeholder="/#contact or https://…" value={showcaseForm.action_url} onChange={(event) => setShowcaseForm({ ...showcaseForm, action_url: event.currentTarget.value })} /></label>
+          </div>
+          <label className="check-label"><input type="checkbox" checked={showcaseForm.published} onChange={(event) => setShowcaseForm({ ...showcaseForm, published: event.currentTarget.checked })} /> Visible in carousel</label>
+          <button className="button button-primary" disabled={busy} type="submit">{showcaseId ? 'Update slide' : 'Add slide'}</button>
+        </form>
+        <ItemList items={slides} title={(entry) => `${entry.title}${entry.published ? '' : ' · Draft'}`} onEdit={(entry) => { setShowcaseId(entry.id); setShowcaseForm({ eyebrow: entry.eyebrow, title: entry.title, description: entry.description, image_id: entry.image_id, action_label: entry.action_label, action_url: entry.action_url, sort_order: entry.sort_order, published: entry.published }); }} onDelete={(entry) => void run(async () => { await deleteShowcase(entry.id, token); setSlides(await getAdminShowcase(token)); })} />
       </section>
     </div>
   );

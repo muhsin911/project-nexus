@@ -5,8 +5,9 @@
 
 import { useRef, useState } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
-import { Mesh } from 'three';
-import { NodeData } from '@/types/3d';
+import { Html } from '@react-three/drei';
+import type { Mesh } from 'three';
+import type { NodeData } from '@/types/3d';
 
 interface NodeProps {
   data: NodeData;
@@ -28,7 +29,7 @@ export function Node({ data, onHover, onClick }: NodeProps) {
     const yOffset = Math.sin(time * 1.5 + data.position[0]) * 0.1;
     
     // Smooth scale transition on hover/active
-    const targetScale = data.scale ?? (hovered ? 1.2 : active ? 1.1 : 1.0);
+    const targetScale = hovered ? 1.25 : active ? 1.12 : data.scale ?? 1;
     const currentScale = meshRef.current.scale.x;
     const newScale = currentScale + (targetScale - currentScale) * delta * 5;
     
@@ -68,10 +69,13 @@ export function Node({ data, onHover, onClick }: NodeProps) {
       <meshStandardMaterial
         color={hovered ? '#ffffff' : data.color}
         emissive={data.color}
-        emissiveIntensity={hovered ? 0.8 : 0.2}
-        roughness={0.3}
-        metalness={0.8}
+        emissiveIntensity={hovered ? 1.1 : 0.45}
+        roughness={0.24}
+        metalness={0.55}
       />
+      <Html center distanceFactor={9} position={[0, -0.72, 0]} style={{ pointerEvents: 'none' }}>
+        <span className={`scene-node-label scene-node-${data.type}`}>{data.label}</span>
+      </Html>
     </mesh>
   );
 }

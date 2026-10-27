@@ -1,16 +1,11 @@
 /**
  * Constellation Component.
- * Manages and renders a collection of 3D nodes using QuadTree spatial partitioning
- * for high-performance frustum culling.
+ * Arranges a small portfolio of projects, skills, and experience as an interactive 3D constellation.
  */
 
-import { useMemo, useRef } from 'react';
-import { Group } from 'three';
-import { useThree } from '@react-three/fiber';
+import { Line } from '@react-three/drei';
 import { Node } from './Node';
-import { RaycastManager } from './RaycastManager';
-import { QuadTree, Rectangle } from '@/utils/quadtree'; // <-- REMOVED: Point3D
-import { NodeData } from '@/types/3d';
+import type { NodeData } from '@/types/3d';
 
 interface ConstellationProps {
   nodes: NodeData[];
@@ -19,48 +14,23 @@ interface ConstellationProps {
 }
 
 export function Constellation({ nodes, onNodeHover, onNodeClick }: ConstellationProps) {
-  const groupRef = useRef<Group>(null);
-  const { camera } = useThree();
-
-  // 1. Build the QuadTree once when nodes change
-  const quadTree = useMemo(() => {
-    const qt = new QuadTree({ x: 0, y: 0, w: 200, h: 200 }, 8); // Large boundary, capacity 8
-    
-    nodes.forEach((node) => {
-      qt.insert({
-        id: node.id,
-        x: node.position[0],
-        y: node.position[2], // Map 3D Z to 2D Y for the QuadTree
-        z: node.position[1], // Map 3D Y to 2D Z (height, unused in 2D tree but kept for reference)
-        data: node,
-      });
-    });
-    
-    return qt;
-  }, [nodes]);
-
-  // 2. Query visible nodes based on camera position (Frustum Culling approximation)
-  const visibleNodes = useMemo(() => {
-    if (!camera) return [];
-
-    // Define a query range centered on the camera's X/Z position
-    const viewDistance = 30; // Adjust based on camera FOV and desired render distance
-    const queryRange: Rectangle = {
-      x: camera.position.x,
-      y: camera.position.z,
-      w: viewDistance * 2,
-      h: viewDistance * 2,
-    };
-
-    const visiblePoints = quadTree.query(queryRange);
-    
-    return visiblePoints.map((p) => p.data as NodeData);
-  }, [quadTree, camera]);
-
   return (
-    <group ref={groupRef} name="constellation">
-      {/* Render ONLY the culled, visible nodes */}
-      {visibleNodes.map((node) => (
+    <group name="constellation">
+      <mesh>
+        <icosahedronGeometry args={[0.72, 1]} />
+        <meshStandardMaterial color="#0a2530" emissive="#0c7189" emissiveIntensity={0.8} wireframe />
+      </mesh>
+      {nodes.map((node) => (
+        <Line
+          key={`link-${node.id}`}
+          points={[[0, 0, 0], node.position]}
+          color={node.color}
+          transparent
+          opacity={0.2}
+          lineWidth={0.6}
+        />
+      ))}
+      {nodes.map((node) => (
         <Node
           key={node.id}
           data={node}
@@ -68,13 +38,6 @@ export function Constellation({ nodes, onNodeHover, onNodeClick }: Constellation
           onClick={onNodeClick}
         />
       ))}
-
-      {/* Centralized Raycasting for all children in this group */}
-      <RaycastManager
-        targetRef={groupRef}
-        onHover={onNodeHover || (() => {})}
-        onClick={onNodeClick || (() => {})}
-      />
     </group>
   );
 }

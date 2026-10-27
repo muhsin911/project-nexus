@@ -67,6 +67,7 @@ class PortfolioImage(Base, UUIDMixin, TimestampMixin):
     content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     entries: Mapped[list["PortfolioContent"]] = relationship(back_populates="image")
     testimonials: Mapped[list["PortfolioTestimonial"]] = relationship(back_populates="image")
+    showcases: Mapped[list["PortfolioShowcase"]] = relationship(back_populates="image")
 
 
 class PortfolioContent(Base, UUIDMixin, TimestampMixin):
@@ -82,6 +83,7 @@ class PortfolioContent(Base, UUIDMixin, TimestampMixin):
     slug: Mapped[str] = mapped_column(String(220), nullable=False)
     excerpt: Mapped[str] = mapped_column(String(500), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     role: Mapped[str] = mapped_column(String(160), nullable=False, default="")
     tech_stack: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     repository_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
@@ -145,6 +147,53 @@ class PortfolioTestimonial(Base, UUIDMixin, TimestampMixin):
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     image: Mapped[PortfolioImage | None] = relationship(back_populates="testimonials")
+
+
+class PortfolioFAQ(Base, UUIDMixin, TimestampMixin):
+    """A frequently asked question shown on the public portfolio."""
+
+    __tablename__ = "portfolio_faqs"
+    __table_args__ = (Index("ix_portfolio_faqs_sort", "sort_order"),)
+
+    question: Mapped[str] = mapped_column(String(300), nullable=False)
+    answer: Mapped[str] = mapped_column(Text, nullable=False)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
+class PortfolioShowcase(Base, UUIDMixin, TimestampMixin):
+    """An owner-managed slide in the homepage highlight carousel."""
+
+    __tablename__ = "portfolio_showcase"
+    __table_args__ = (Index("ix_portfolio_showcase_sort", "sort_order"),)
+
+    eyebrow: Mapped[str] = mapped_column(String(120), nullable=False, default="")
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    image_id: Mapped[str | None] = mapped_column(
+        ForeignKey("portfolio_images.id", ondelete="SET NULL"), nullable=True
+    )
+    action_label: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    action_url: Mapped[str] = mapped_column(String(2048), nullable=False, default="")
+    sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    image: Mapped[PortfolioImage | None] = relationship(back_populates="showcases")
+
+
+class PortfolioBlogPost(Base, UUIDMixin, TimestampMixin):
+    """An owner-managed long-form blog article."""
+
+    __tablename__ = "portfolio_blog_posts"
+    __table_args__ = (
+        UniqueConstraint("slug", name="uq_portfolio_blog_posts_slug"),
+        Index("ix_portfolio_blog_posts_published_created", "published", "created_at"),
+    )
+
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    slug: Mapped[str] = mapped_column(String(220), nullable=False)
+    excerpt: Mapped[str] = mapped_column(String(500), nullable=False)
+    body_html: Mapped[str] = mapped_column(Text, nullable=False)
+    published: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
 
 class PortfolioResume(Base, TimestampMixin):
