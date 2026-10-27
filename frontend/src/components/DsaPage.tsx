@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faHouse } from '@fortawesome/free-solid-svg-icons';
+import { CustomPointer } from '@/components/CustomPointer';
 import { getDsaCategories, getDsaProblems, type DsaCategory, type DsaProblem } from '@/lib/portfolioApi';
 
 export function DsaPage() {
@@ -45,16 +48,18 @@ export function DsaPage() {
 
   return (
     <main className="dsa-page">
-      <header className="topline">
-        <a className="wordmark" href="/" aria-label="Nexus, home">
-          <span className="wordmark-mark">N.</span><span>PORTFOLIO / PROBLEM LOG</span>
+      <CustomPointer />
+      <header className="topline subpage-header">
+        <a className="subpage-home" href="/" aria-label="Portfolio home" title="Portfolio home">
+          <FontAwesomeIcon icon={faHouse} aria-hidden="true" />
         </a>
         <nav className="main-nav" aria-label="Main navigation">
-          <a href="/">Portfolio <span>01</span></a>
-          <a href="/#work">Work <span>02</span></a>
-          <a href="/#about">Approach <span>03</span></a>
+          <a href="/">Portfolio</a>
+          <a href="/blog">Blog</a>
+          <a href="/dsa" aria-current="page">DSA</a>
+          <a href="/#contact">Contact</a>
         </nav>
-        <a className="nav-contact" href="/#contact">Let&apos;s talk <span aria-hidden="true">↗</span></a>
+        <span className="subpage-header-spacer" aria-hidden="true" />
       </header>
 
       <section className="dsa-intro section-wrap">
@@ -163,11 +168,12 @@ export function DsaPage() {
           )}
         </div>
       </section>
-      <footer className="footer section-wrap">
+      <footer className="footer section-wrap dsa-footer">
         <div className="footer-bottom">
-          <a className="wordmark" href="/"><span className="wordmark-mark">N.</span><span>MADE WITH INTENTION</span></a>
+          <a className="subpage-home footer-home" href="/" aria-label="Portfolio home" title="Portfolio home">
+            <FontAwesomeIcon icon={faHouse} aria-hidden="true" />
+          </a>
           <span>© {new Date().getFullYear()} · Keep learning.</span>
-          <a href="/">Back to portfolio ↗</a>
         </div>
       </footer>
     </main>
