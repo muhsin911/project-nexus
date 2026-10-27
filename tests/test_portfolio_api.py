@@ -165,6 +165,74 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume(
         assert experience_update.status_code == 200
         assert (await client.get(f"{base}/experience")).json() == []
 
+        assert (await client.get(f"{base}/education")).json() == []
+        assert (await client.get(f"{base}/admin/education")).status_code == 401
+        education_response = await client.post(
+            f"{base}/education",
+            headers=headers,
+            json={
+                "degree": "M.Sc. Data Science",
+                "institution": "NEXUS University",
+                "period": "2025 — Present",
+                "sort_order": 0,
+            },
+        )
+        assert education_response.status_code == 201
+        education_id = education_response.json()["id"]
+        assert (await client.get(f"{base}/education")).json()[0][
+            "institution"
+        ] == "NEXUS University"
+        education_update = await client.put(
+            f"{base}/education/{education_id}",
+            headers=headers,
+            json={
+                "degree": "M.Sc. Computer Science",
+                "institution": "NEXUS University",
+                "period": "2025 — Present",
+                "published": False,
+            },
+        )
+        assert education_update.status_code == 200
+        assert (await client.get(f"{base}/education")).json() == []
+        assert (await client.get(f"{base}/admin/education", headers=headers)).json()[0][
+            "id"
+        ] == education_id
+        assert (
+            await client.delete(f"{base}/education/{education_id}", headers=headers)
+        ).status_code == 204
+
+        assert (await client.get(f"{base}/certifications")).json() == []
+        assert (await client.get(f"{base}/admin/certifications")).status_code == 401
+        certification_response = await client.post(
+            f"{base}/certifications",
+            headers=headers,
+            json={
+                "name": "Software Engineering Specialization",
+                "issuer": "NEXUS Academy",
+                "sort_order": 0,
+            },
+        )
+        assert certification_response.status_code == 201
+        certification_id = certification_response.json()["id"]
+        assert (await client.get(f"{base}/certifications")).json()[0]["issuer"] == "NEXUS Academy"
+        certification_update = await client.put(
+            f"{base}/certifications/{certification_id}",
+            headers=headers,
+            json={
+                "name": "Advanced Software Engineering",
+                "issuer": "NEXUS Academy",
+                "published": False,
+            },
+        )
+        assert certification_update.status_code == 200
+        assert (await client.get(f"{base}/certifications")).json() == []
+        assert (await client.get(f"{base}/admin/certifications", headers=headers)).json()[0][
+            "id"
+        ] == certification_id
+        assert (
+            await client.delete(f"{base}/certifications/{certification_id}", headers=headers)
+        ).status_code == 204
+
         skill_response = await client.post(
             f"{base}/skills",
             headers=headers,

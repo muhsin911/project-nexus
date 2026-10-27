@@ -14,7 +14,7 @@ COPY alembic ./alembic
 COPY alembic.ini ./
 
 RUN python -m pip install --upgrade pip \
-    && if [ "$INSTALL_AI" = "true" ]; then python -m pip install '.[ai]'; else python -m pip install .; fi
+    && if [ "$INSTALL_AI" = "true" ]; then python -m pip install '.[ai,agents]'; else python -m pip install .; fi
 
 EXPOSE 8000
 

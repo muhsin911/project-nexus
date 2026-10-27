@@ -46,6 +46,8 @@ import { CustomPointer } from '@/components/CustomPointer';
 import { DsaPage } from '@/components/DsaPage';
 import { ManagePage } from '@/components/ManagePage';
 import {
+  getCertifications,
+  getEducation,
   getExperience,
   getPortfolioProfile,
   getPublishedContent,
@@ -53,6 +55,8 @@ import {
   getSkills,
   publicApiUrl,
   sendContactMessage,
+  type CertificationEntry,
+  type EducationEntry,
   type ExperienceEntry,
   type PortfolioContent,
   type PortfolioProfile,
@@ -145,18 +149,18 @@ const cvExperience: ExperienceEntry[] = [
   },
 ];
 
-const cvEducation = [
-  { institution: 'Kalasalingam University', degree: 'M.Sc. Data Science', period: '2025 — Present' },
-  { institution: 'University of Calicut', degree: 'B.Sc. Physics', period: '2016 — 2019' },
+const cvEducation: EducationEntry[] = [
+  { id: 'cv-education-kalasalingam', institution: 'Kalasalingam University', degree: 'M.Sc. Data Science', period: '2025 — Present', sort_order: 0, published: true },
+  { id: 'cv-education-calicut', institution: 'University of Calicut', degree: 'B.Sc. Physics', period: '2016 — 2019', sort_order: 1, published: true },
 ];
 
-const cvCertifications = [
-  'Software Engineering Specialization — The Hong Kong University of Science and Technology',
-  'Generative AI for Software Developers — DeepLearning.AI, Coursera',
-  'Python Master — Inmakes LearningHub',
-  'JavaScript Algorithms and Data Structures — freeCodeCamp',
-  'Front End Development Libraries — freeCodeCamp',
-  'Databases for Developers: Foundations — Oracle Dev Gym',
+const cvCertifications: CertificationEntry[] = [
+  { id: 'cv-certification-1', name: 'Software Engineering Specialization', issuer: 'The Hong Kong University of Science and Technology', sort_order: 0, published: true },
+  { id: 'cv-certification-2', name: 'Generative AI for Software Developers', issuer: 'DeepLearning.AI, Coursera', sort_order: 1, published: true },
+  { id: 'cv-certification-3', name: 'Python Master', issuer: 'Inmakes LearningHub', sort_order: 2, published: true },
+  { id: 'cv-certification-4', name: 'JavaScript Algorithms and Data Structures', issuer: 'freeCodeCamp', sort_order: 3, published: true },
+  { id: 'cv-certification-5', name: 'Front End Development Libraries', issuer: 'freeCodeCamp', sort_order: 4, published: true },
+  { id: 'cv-certification-6', name: 'Databases for Developers: Foundations', issuer: 'Oracle Dev Gym', sort_order: 5, published: true },
 ];
 
 const cvSkills: SkillEntry[] = [
@@ -216,6 +220,8 @@ function Portfolio() {
   const [profile, setProfile] = useState(defaultProfile);
   const [content, setContent] = useState<PortfolioContent[]>([]);
   const [experience, setExperience] = useState<ExperienceEntry[]>([]);
+  const [education, setEducation] = useState(cvEducation);
+  const [certifications, setCertifications] = useState(cvCertifications);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [resume, setResume] = useState<ResumeStatus>({ available: false });
   const [loadingContent, setLoadingContent] = useState(true);
@@ -414,10 +420,12 @@ function Portfolio() {
       getPortfolioProfile(),
       getPublishedContent(),
       getExperience(),
+      getEducation(),
+      getCertifications(),
       getSkills(),
       getResumeStatus(),
     ])
-      .then(([profileResult, contentResult, experienceResult, skillsResult, resumeResult]) => {
+      .then(([profileResult, contentResult, experienceResult, educationResult, certificationsResult, skillsResult, resumeResult]) => {
         if (!active) return;
         if (profileResult.status === 'fulfilled') setProfile(profileResult.value);
         else setPortfolioError(profileResult.reason instanceof Error ? profileResult.reason.message : 'Profile data could not be loaded.');
@@ -431,6 +439,24 @@ function Portfolio() {
           );
         }
         if (experienceResult.status === 'fulfilled') setExperience(experienceResult.value);
+        if (educationResult.status === 'fulfilled') {
+          setEducation(educationResult.value);
+        } else {
+          setPortfolioError((current) => current || (
+            educationResult.reason instanceof Error
+              ? educationResult.reason.message
+              : 'Education entries could not be loaded.'
+          ));
+        }
+        if (certificationsResult.status === 'fulfilled') {
+          setCertifications(certificationsResult.value);
+        } else {
+          setPortfolioError((current) => current || (
+            certificationsResult.reason instanceof Error
+              ? certificationsResult.reason.message
+              : 'Certifications could not be loaded.'
+          ));
+        }
         if (skillsResult.status === 'fulfilled') setSkills(skillsResult.value);
         if (resumeResult.status === 'fulfilled') {
           setResume(resumeResult.value);
@@ -717,8 +743,8 @@ function Portfolio() {
         </div>
         <div className="credentials-grid">
           <div className="education-list">
-            {cvEducation.map((entry) => (
-              <article className="education-item" key={entry.institution}>
+            {education.map((entry) => (
+              <article className="education-item" key={entry.id}>
                 <p>{entry.period}</p>
                 <h3>{entry.degree}</h3>
                 <span>{entry.institution}</span>
@@ -726,7 +752,11 @@ function Portfolio() {
             ))}
           </div>
           <ul className="certification-list">
-            {cvCertifications.map((certification) => <li key={certification}>{certification}</li>)}
+            {certifications.map((certification) => (
+              <li key={certification.id}>
+                {certification.name}{certification.issuer ? ` — ${certification.issuer}` : ''}
+              </li>
+            ))}
           </ul>
         </div>
       </section>

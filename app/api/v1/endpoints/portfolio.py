@@ -25,7 +25,9 @@ from app.db.models.portfolio import (
     DSACategory,
     DSAProblem,
     PortfolioBlogPost,
+    PortfolioCertification,
     PortfolioContent,
+    PortfolioEducation,
     PortfolioExperience,
     PortfolioFAQ,
     PortfolioImage,
@@ -39,11 +41,15 @@ from app.db.session import get_db
 from app.schemas.portfolio import (
     AdminLogin,
     AdminSession,
+    CertificationInput,
+    CertificationRead,
     ContactMessage,
     DSACategoryInput,
     DSACategoryRead,
     DSAProblemInput,
     DSAProblemRead,
+    EducationInput,
+    EducationRead,
     ExperienceInput,
     ExperienceRead,
     FAQInput,
@@ -282,6 +288,120 @@ async def delete_experience(entry_id: str, db: DatabaseSession, _: AdminAccess) 
     record = await db.get(PortfolioExperience, entry_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Experience entry not found.")
+    await db.delete(record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/education", response_model=list[EducationRead])
+async def list_education(db: DatabaseSession) -> list[PortfolioEducation]:
+    result = await db.execute(
+        select(PortfolioEducation)
+        .where(PortfolioEducation.published.is_(True))
+        .order_by(PortfolioEducation.sort_order, PortfolioEducation.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/admin/education", response_model=list[EducationRead])
+async def list_all_education(db: DatabaseSession, _: AdminAccess) -> list[PortfolioEducation]:
+    result = await db.execute(
+        select(PortfolioEducation).order_by(
+            PortfolioEducation.sort_order, PortfolioEducation.created_at.desc()
+        )
+    )
+    return list(result.scalars().all())
+
+
+@router.post("/education", response_model=EducationRead, status_code=status.HTTP_201_CREATED)
+async def create_education(
+    entry: EducationInput, db: DatabaseSession, _: AdminAccess
+) -> PortfolioEducation:
+    record = PortfolioEducation(**entry.model_dump())
+    db.add(record)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.put("/education/{entry_id}", response_model=EducationRead)
+async def update_education(
+    entry_id: str, entry: EducationInput, db: DatabaseSession, _: AdminAccess
+) -> PortfolioEducation:
+    record = await db.get(PortfolioEducation, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Education entry not found.")
+    for key, value in entry.model_dump().items():
+        setattr(record, key, value)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.delete("/education/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_education(entry_id: str, db: DatabaseSession, _: AdminAccess) -> Response:
+    record = await db.get(PortfolioEducation, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Education entry not found.")
+    await db.delete(record)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/certifications", response_model=list[CertificationRead])
+async def list_certifications(db: DatabaseSession) -> list[PortfolioCertification]:
+    result = await db.execute(
+        select(PortfolioCertification)
+        .where(PortfolioCertification.published.is_(True))
+        .order_by(PortfolioCertification.sort_order, PortfolioCertification.created_at.desc())
+    )
+    return list(result.scalars().all())
+
+
+@router.get("/admin/certifications", response_model=list[CertificationRead])
+async def list_all_certifications(
+    db: DatabaseSession, _: AdminAccess
+) -> list[PortfolioCertification]:
+    result = await db.execute(
+        select(PortfolioCertification).order_by(
+            PortfolioCertification.sort_order, PortfolioCertification.created_at.desc()
+        )
+    )
+    return list(result.scalars().all())
+
+
+@router.post(
+    "/certifications",
+    response_model=CertificationRead,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_certification(
+    entry: CertificationInput, db: DatabaseSession, _: AdminAccess
+) -> PortfolioCertification:
+    record = PortfolioCertification(**entry.model_dump())
+    db.add(record)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.put("/certifications/{entry_id}", response_model=CertificationRead)
+async def update_certification(
+    entry_id: str, entry: CertificationInput, db: DatabaseSession, _: AdminAccess
+) -> PortfolioCertification:
+    record = await db.get(PortfolioCertification, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Certification not found.")
+    for key, value in entry.model_dump().items():
+        setattr(record, key, value)
+    await db.flush()
+    await db.refresh(record)
+    return record
+
+
+@router.delete("/certifications/{entry_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_certification(entry_id: str, db: DatabaseSession, _: AdminAccess) -> Response:
+    record = await db.get(PortfolioCertification, entry_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Certification not found.")
     await db.delete(record)
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 

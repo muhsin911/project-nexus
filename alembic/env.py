@@ -10,10 +10,10 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import Connection, MetaData, pool
 from sqlalchemy.ext.asyncio import AsyncEngine, async_engine_from_config
 
+from alembic import context
 from app.core.config import settings
 from app.db import models  # noqa: F401  — registers every mapper on Base.metadata
 from app.db.base import Base
@@ -32,23 +32,26 @@ target_metadata: MetaData = Base.metadata
 
 def include_object(object, name, type_, reflected, compare_to) -> bool:
     """
-    Filter out PostGIS and Tiger Geocoder tables from Alembic autogenerate.
-    This prevents Alembic from trying to drop built-in spatial tables.
+    Filter out built-in spatial metadata and preserved legacy tables from autogenerate.
     """
     if type_ == "table":
-        # Ignore standard PostGIS metadata tables
+        # Ignore standard PostGIS metadata and deferred legacy job data.
         postgis_tables = {
-            "spatial_ref_sys", "geometry_columns", "geography_columns",
-            "raster_columns", "raster_overviews"
+            "spatial_ref_sys",
+            "geometry_columns",
+            "geography_columns",
+            "raster_columns",
+            "raster_overviews",
+            "deferred_job_scraper_data",
         }
         if name in postgis_tables:
             return False
-        
+
         # Ignore anything in the 'tiger' or 'topology' schemas
         schema = getattr(object, "schema", None)
         if schema in ("tiger", "topology"):
             return False
-            
+
     return True
 
 
