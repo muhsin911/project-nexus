@@ -57,7 +57,6 @@ export function DsaPage() {
           <a href="/">Portfolio</a>
           <a href="/blog">Blog</a>
           <a href="/dsa" aria-current="page">DSA</a>
-          <a href="/#contact">Contact</a>
         </nav>
         <span className="subpage-header-spacer" aria-hidden="true" />
       </header>

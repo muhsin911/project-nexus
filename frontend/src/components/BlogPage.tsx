@@ -67,7 +67,6 @@ export function BlogPage({ slug }: { slug?: string }) {
           <a href="/">Portfolio</a>
           <a href="/blog" aria-current={!slug ? 'page' : undefined}>Blog</a>
           <a href="/dsa">DSA</a>
-          <a href="/#contact">Contact</a>
         </nav>
         <span className="subpage-header-spacer" aria-hidden="true" />
       </header>

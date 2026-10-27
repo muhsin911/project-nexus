@@ -471,20 +471,17 @@ textarea:focus-visible {
   gap: clamp(16px, 3vw, 40px);
 }
 
-.main-nav a,
-.nav-contact {
+.main-nav a {
   color: var(--muted);
   font-size: 12px;
   transition: color 160ms ease;
 }
 
-.main-nav a:hover,
-.nav-contact:hover {
+.main-nav a:hover {
   color: var(--accent);
 }
 
-.main-nav span,
-.nav-contact span {
+.main-nav span {
   margin-left: 5px;
   color: var(--dim);
   font: 9px var(--mono);
@@ -633,12 +630,15 @@ h2 em {
 }
 
 .education-list {
-  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 12px;
 }
 
 .education-item {
-  padding: 18px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
 }
 
 .education-item p,
@@ -657,15 +657,17 @@ h2 em {
 .certification-list {
   display: grid;
   align-content: start;
-  gap: 0;
+  gap: 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .certification-list li {
-  padding: 13px 0;
-  border-bottom: 1px solid var(--line);
+  padding: 20px 24px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--panel) 62%, transparent);
   color: var(--muted);
   font-size: 12px;
   line-height: 1.65;
@@ -2079,6 +2081,18 @@ h2 em {
   border-top: 1px solid var(--line);
 }
 
+.contact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: start;
+  gap: 48px;
+  margin-bottom: 55px;
+}
+
+.contact-grid .contact-details {
+  margin: 0;
+}
+
 .contact-form {
   display: grid;
   max-width: 680px;
@@ -2087,6 +2101,12 @@ h2 em {
   padding: 24px;
   border: 1px solid var(--line);
   background: var(--panel);
+}
+
+.contact-grid .contact-form {
+  width: 100%;
+  max-width: none;
+  margin: 0;
 }
 
 .contact-form label {
@@ -4100,6 +4120,12 @@ h2 em {
     text-align: center;
   }
 
+  .portfolio-shell .contact-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    margin-bottom: 38px;
+  }
+
   .portfolio-shell .footer-bottom {
     align-items: center;
     flex-direction: column;
@@ -4156,6 +4182,7 @@ h2 em {
   width: 100%;
   gap: 24px;
   padding: 4px 1px;
+  animation: none;
   transition: none;
   transform: none;
 }
@@ -4292,7 +4319,6 @@ h2 em {
 
 .dsa-page .main-nav a,
 .blog-page .main-nav a,
-.dsa-page .nav-contact,
 .blog-page .main-nav a[aria-current='page'] {
   color: var(--muted);
   transition: color 160ms ease;
@@ -4300,16 +4326,8 @@ h2 em {
 
 .dsa-page .main-nav a:hover,
 .blog-page .main-nav a:hover,
-.dsa-page .nav-contact:hover,
 .blog-page .main-nav a[aria-current='page'] {
   color: var(--accent);
-}
-
-.dsa-page .nav-contact {
-  padding: 10px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 11px;
 }
 
 .dsa-page .dsa-intro {
@@ -4787,11 +4805,6 @@ h2 em {
   .blog-page .wordmark {
     gap: 7px;
     font-size: 7px;
-  }
-
-  .dsa-page .topline .nav-contact {
-    padding: 8px 10px;
-    font-size: 9px;
   }
 
   .dsa-page .dsa-intro h1 {
