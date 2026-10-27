@@ -78,10 +78,34 @@ intend to permanently remove that local data.
 
 ## Free-tier deployment
 
-The suggested starter setup is a Render static site for the frontend and a
-Render Docker web service with Neon PostgreSQL for the backend. Free plans,
-quotas, and provider setup screens can change. This guide prepares the project
-for hosting; it does not create provider accounts or deploy anything.
+Free plans, quotas, and provider setup screens can change. The following
+frontend-first setup deploys the self-contained portfolio before adding the
+backend and database.
+
+### Phase 1: Cloudflare Pages frontend
+
+1. Connect this GitHub repository to Cloudflare Pages. Choose the `main`
+   production branch, set the root directory to `frontend`, the build command
+   to `npm ci && npm run build`, and the build output directory to `dist`.
+2. Set these **build-time** variables in Pages:
+
+   ```text
+   VITE_STATIC_DEPLOYMENT=true
+   VITE_FORMSPREE_ENDPOINT=https://formspree.io/f/<your-form-id>
+   ```
+
+   Static mode uses the résumé, project, experience, skills, education, and
+   certification data bundled with the frontend; it does not call the
+   localhost API. Blog, DSA, and management routes are hidden until the backend
+   is connected. The `frontend/public/_redirects` file enables SPA routing.
+3. Create a Formspree form, set its allowed domain to the deployed site, and
+   place its endpoint URL in `VITE_FORMSPREE_ENDPOINT`. This is a public form
+   endpoint, not a secret key. Until it is configured, the form will direct
+   visitors to email you instead of showing a false success.
+4. Trigger a new Pages deployment after changing build variables. Verify the
+   résumé download, social/contact links, project image, and contact form.
+
+### Phase 2: backend and database, when ready
 
 1. Create a PostgreSQL database on Neon. Copy its host, port, database name,
    username, and password into the backend variables below and set
@@ -91,16 +115,12 @@ for hosting; it does not create provider accounts or deploy anything.
    `ENVIRONMENT=production`, `DEBUG=false`, a strong private `SECRET_KEY`, and
    private `PORTFOLIO_ADMIN_USERNAME` and `PORTFOLIO_ADMIN_PASSWORD` values.
    Set the health-check path to `/api/v1/health/live`.
-3. Create a Render **Static Site** from the same repository. Set root
-   directory to `frontend`, build command to `npm ci && npm run build`, and
-   publish directory to `dist`. Add the build-time variable
-   `VITE_API_BASE_URL` with the backend origin, for example
+3. Set the Cloudflare Pages build variable `VITE_STATIC_DEPLOYMENT=false` and
+   set `VITE_API_BASE_URL` to the backend origin, for example
    `https://<your-backend-name>.onrender.com` (do not append `/api/v1`).
-4. Configure a rewrite on the static site from `/*` to `/index.html` with
-   status `200`, so direct visits and refreshes on `/manage` load the SPA.
-5. Set the backend's `FRONTEND_ORIGIN` to the static site's HTTPS origin only,
-   without a path or trailing slash. Redeploy the backend and test both the
-   public portfolio and `/manage`.
+   Set the backend's `FRONTEND_ORIGIN` to the Pages HTTPS origin only, without
+   a path or trailing slash, then redeploy both services.
+4. Verify the public portfolio, `/blog`, `/dsa`, and `/manage`.
 
 Backend environment variables:
 
@@ -142,6 +162,9 @@ landscape images such as `atb-accessibility-toolbar.webp` and
 select them while editing each project. These become the project covers; their
 3D nodes link to the work section. Use JPEG, PNG, or WebP, up to 5 MB. Images
 in `frontend/public/` are public; do not put private files or secrets there.
+The accessibility-toolbar screenshot used by the static portfolio is bundled
+at `frontend/public/images/accessibility-toolbar.png` and receives a dark teal
+overlay to match the site palette.
 The interactive desktop computer is based on the model provided in
 `Sample Project Ideas/reactjs18-3d-portfolio-main` and is bundled in
 `frontend/public/models/desktop_pc/`. Its MIT license is included alongside

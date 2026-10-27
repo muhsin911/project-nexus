@@ -84,6 +84,9 @@ const defaultProfile: PortfolioProfile = {
   ],
 };
 
+const staticDeployment = import.meta.env.VITE_STATIC_DEPLOYMENT === 'true';
+const formspreeEndpoint = import.meta.env.VITE_FORMSPREE_ENDPOINT?.trim();
+
 const cvProjects: PortfolioContent[] = [
   {
     id: 'cv-atb-accessibility-toolbar',
@@ -100,6 +103,7 @@ const cvProjects: PortfolioContent[] = [
     sort_order: 0,
     image_id: null,
     image: null,
+    local_image_url: '/images/accessibility-toolbar.png',
   },
   {
     id: 'cv-production-tracking-platform',
@@ -208,9 +212,9 @@ const toolIcons: Record<string, IconDefinition> = {
 
 function App() {
   const path = window.location.pathname.replace(/\/+$/, '');
-  if (path === '/manage') return <ManagePage />;
-  if (path === '/dsa') return <DsaPage />;
-  if (path === '/blog' || path.startsWith('/blog/')) {
+  if (!staticDeployment && path === '/manage') return <ManagePage />;
+  if (!staticDeployment && path === '/dsa') return <DsaPage />;
+  if (!staticDeployment && (path === '/blog' || path.startsWith('/blog/'))) {
     return <BlogPage slug={path.startsWith('/blog/') ? path.slice('/blog/'.length) : undefined} />;
   }
   return <Portfolio />;
@@ -224,7 +228,7 @@ function Portfolio() {
   const [certifications, setCertifications] = useState(cvCertifications);
   const [skills, setSkills] = useState<SkillEntry[]>([]);
   const [resume, setResume] = useState<ResumeStatus>({ available: false });
-  const [loadingContent, setLoadingContent] = useState(true);
+  const [loadingContent, setLoadingContent] = useState(!staticDeployment);
   const [portfolioError, setPortfolioError] = useState('');
   const [theme, setTheme] = useState(() => localStorage.getItem('nexus-theme') ?? 'dark');
   const [menuOpen, setMenuOpen] = useState(false);
@@ -241,10 +245,13 @@ function Portfolio() {
   const roleList = profile.job_roles.length ? profile.job_roles : defaultProfile.job_roles;
   const activeRole = roleList[activeRoleIndex % roleList.length] ?? defaultProfile.job_roles[0];
   const socialLinks = [...profile.social_links];
-  if (!socialLinks.some((link) => (
+  const twitterLink = socialLinks.find((link) => (
     link.icon.toLowerCase() === 'twitter' || link.icon.toLowerCase() === 'x'
-  ))) {
-    socialLinks.push({ label: 'Twitter', url: 'https://www.google.com/search?q=Twitter', icon: 'twitter' });
+  ));
+  if (twitterLink) {
+    twitterLink.url = 'https://x.com/muhsin__911p';
+  } else {
+    socialLinks.push({ label: 'Twitter', url: 'https://x.com/muhsin__911p', icon: 'twitter' });
   }
   const phoneDigits = profile.phone.replace(/\D/g, '');
   if (phoneDigits && !socialLinks.some((link) => link.icon.toLowerCase() === 'whatsapp')) {
@@ -415,6 +422,7 @@ function Portfolio() {
   }
 
   useEffect(() => {
+    if (staticDeployment) return;
     let active = true;
     Promise.allSettled([
       getPortfolioProfile(),
@@ -481,22 +489,43 @@ function Portfolio() {
     const form = event.currentTarget;
     const values = new FormData(form);
     const purpose = values.get('purpose');
+    const message = {
+      name: String(values.get('name') ?? ''),
+      email: String(values.get('email') ?? ''),
+      subject: String(values.get('subject') ?? ''),
+      purpose: purpose === 'Freelance'
+        || purpose === 'Interview'
+        || purpose === 'Consultation'
+        ? purpose
+        : 'Other',
+      message: String(values.get('message') ?? ''),
+      website: String(values.get('website') ?? ''),
+    } as const;
     setContactBusy(true);
     setContactFeedback('');
     try {
-      const result = await sendContactMessage({
-        name: String(values.get('name') ?? ''),
-        email: String(values.get('email') ?? ''),
-        subject: String(values.get('subject') ?? ''),
-        purpose: purpose === 'Freelance'
-          || purpose === 'Interview'
-          || purpose === 'Consultation'
-          ? purpose
-          : 'Other',
-        message: String(values.get('message') ?? ''),
-        website: String(values.get('website') ?? ''),
-      });
-      setContactFeedback(result.message);
+      if (staticDeployment) {
+        if (!formspreeEndpoint) {
+          throw new Error('The contact form is not configured yet. Please email amkmuhsinzsb@gmail.com directly.');
+        }
+        const response = await fetch(formspreeEndpoint, {
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...message,
+            _replyto: message.email,
+            _subject: `${message.purpose}: ${message.subject}`,
+            _gotcha: message.website,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Your message could not be sent (Formspree returned ${response.status}). Please email me directly.`);
+        }
+        setContactFeedback('Thanks! Your message has been sent.');
+      } else {
+        const result = await sendContactMessage(message);
+        setContactFeedback(result.message);
+      }
       form.reset();
     } catch (error) {
       setContactFeedback(error instanceof Error ? error.message : 'Your message could not be sent.');
@@ -543,7 +572,7 @@ function Portfolio() {
                   : <path d="M20.2 15.1A8.4 8.4 0 0 1 8.9 3.8 8.5 8.5 0 1 0 20.2 15.1Z" />}
               </svg>
             </button>
-            <div className="dsa-menu">
+            {!staticDeployment && <div className="dsa-menu">
               <button
                 aria-controls="portfolio-menu"
                 aria-expanded={menuOpen}
@@ -560,11 +589,11 @@ function Portfolio() {
               </button>
               {menuOpen && (
                 <nav className="menu-popover" id="portfolio-menu" aria-label="Main navigation">
-                  <a href="/blog">Blog <span>↗</span></a>
-                  <a href="/dsa">DSA <span>↗</span></a>
+                  {!staticDeployment && <a href="/blog">Blog <span>↗</span></a>}
+                  {!staticDeployment && <a href="/dsa">DSA <span>↗</span></a>}
                 </nav>
               )}
-            </div>
+            </div>}
           </div>
         </header>
         <div className="hero-copy">
@@ -632,9 +661,16 @@ function Portfolio() {
             {visibleProjects.slice(0, visibleProjectCount).map((item, index) => (
               <article className={`project-card${item.featured ? ' is-featured' : ''}`} key={item.id}>
                 <div className="project-visual" aria-label={item.image?.alt_text ?? `${item.title} cover art`} role="img">
-                  {item.image ? (
-                    <img alt={item.image.alt_text} src={publicApiUrl(item.image.url)} />
-                  ) : (
+              {item.image || item.local_image_url ? (
+                <>
+                  <img
+                    alt={item.image?.alt_text ?? `${item.title} preview`}
+                    className={item.local_image_url ? 'project-static-image' : undefined}
+                    src={item.local_image_url ?? (item.image ? publicApiUrl(item.image.url) : '')}
+                  />
+                  {item.local_image_url && <span className="project-image-overlay" aria-hidden="true" />}
+                </>
+              ) : (
                     <>
                       <div className="project-visual-lines" />
                       <div className="project-orbit"><span>{String(index + 1).padStart(2, '0')}</span></div>
@@ -810,9 +846,9 @@ function Portfolio() {
         <div className="footer-bottom">
           <a className="wordmark" href="#top"><span className="wordmark-mark">{profile.full_name.slice(0, 1) || 'N'}.</span><span>MADE WITH INTENTION</span></a>
           <span>© {new Date().getFullYear()} · A work in progress, by design.</span>
-          <a href="/blog">Blog</a>
-          <a href="/dsa">Problem log</a>
-          {resume.available && <a href={publicApiUrl('/api/v1/portfolio/cv')}>Résumé ↓</a>}
+          {!staticDeployment && <a href="/blog">Blog</a>}
+          {!staticDeployment && <a href="/dsa">Problem log</a>}
+          <a href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/Software_Engineer_CV_Abdul_Muhsin_K.pdf'}>Résumé ↓</a>
         </div>
       </footer>
       <button className={`scroll-top${showTop ? ' is-visible' : ''}`} type="button" aria-label="Scroll to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}>↑</button>

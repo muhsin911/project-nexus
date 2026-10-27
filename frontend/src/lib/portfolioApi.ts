@@ -47,6 +47,7 @@ export interface PortfolioContent {
   sort_order: number;
   image_id: string | null;
   image: PortfolioImage | null;
+  local_image_url?: string;
 }
 
 export type PortfolioContentInput = Omit<PortfolioContent, 'id' | 'image'>;
