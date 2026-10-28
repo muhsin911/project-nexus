@@ -74,7 +74,7 @@ const defaultProfile: PortfolioProfile = {
   about_title: 'Software that makes work simpler.',
   about: 'I build full-stack applications that turn complex workflows into clear, reliable products. At Yatnam Technologies, I developed 25+ REST API endpoints and helped improve response times by 30%. I also streamlined development with Docker and CI/CD, reducing setup time by 40% and deployments by 50%. My work spans Python, Django, FastAPI, React, and applied generative AI.',
   location: '',
-  phone: '+971 55 355 2442',
+  phone: '+971 55 955 2442',
   address: '',
   email: 'amkmuhsinzsb@gmail.com',
   booking_url: '',

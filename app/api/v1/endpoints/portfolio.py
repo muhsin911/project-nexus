@@ -186,7 +186,7 @@ DEFAULT_PROFILE: dict[str, object] = {
         "applied generative AI."
     ),
     "location": "Dubai, UAE",
-    "phone": "+971 55 355 2442",
+    "phone": "+971 55 955 2442",
     "address": "",
     "email": "amkmuhsinzsb@gmail.com",
     "booking_url": "",

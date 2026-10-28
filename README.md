@@ -76,6 +76,9 @@ Stop the services with `Ctrl+C` or `docker compose down`. The database is kept
 in a named Docker volume. Do not use `docker compose down --volumes` unless you
 intend to permanently remove that local data.
 
+For Git, Docker, and build commands, see the
+[command reference](docs/commands/README.md).
+
 ## Free-tier deployment
 
 Free plans, quotas, and provider setup screens can change. The following

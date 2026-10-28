@@ -80,7 +80,7 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume(
             "deployments by 50%. My work spans Python, Django, FastAPI, React, and "
             "applied generative AI."
         )
-        assert initial_profile["phone"] == "+971 55 355 2442"
+        assert initial_profile["phone"] == "+971 55 955 2442"
         assert initial_profile["email"] == "amkmuhsinzsb@gmail.com"
         assert {link["label"] for link in initial_profile["social_links"]} == {"LinkedIn", "GitHub"}
         profile_update = await client.put(
