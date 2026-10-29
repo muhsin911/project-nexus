@@ -174,7 +174,7 @@ The interactive desktop computer is based on the model provided in
 the model.
 
 The selected Software Engineer CV is available at
-`frontend/public/cv/Software_Engineer_CV_Abdul_Muhsin_K.pdf` as the default
+`frontend/public/cv/CV__Abdul_Muhsin_K.pdf` as the default
 download. Upload a replacement from `/manage` to publish a newer PDF through
 the content manager.
 

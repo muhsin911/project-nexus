@@ -127,7 +127,7 @@ const cvExperience: ExperienceEntry[] = [
   {
     id: 'cv-yatnam-software-engineer',
     company: 'Yatnam Technologies',
-    designation: 'Software Engineer',
+    designation: 'Associate Software Engineer',
     description: 'Built 3+ full-stack business applications and 25+ REST API endpoints with Django, React and Node.js. Cut API response time by 30% through query optimization, reduced local setup time by 40% with a multi-service Docker environment, and cut deployment time by 50% with GitHub Actions CI/CD. Designed a RAG-style AI customization layer that grounds LLM responses in site-specific content.',
     year: 'July 2024 — Sep 2026',
     sort_order: 0,
@@ -136,7 +136,7 @@ const cvExperience: ExperienceEntry[] = [
   {
     id: 'cv-inmakes-developer',
     company: 'Inmakes Infotech Pvt. Ltd.',
-    designation: 'Python-Django Developer',
+    designation: 'Python Developer',
     description: 'Built an Inventory & Order Management portal end to end with Python and Django for 200+ users. Modeled 10+ database entities, developed 15+ REST API endpoints secured with JWT authentication, and enforced role-based access control (RBAC). Delivered 2+ production-ready web applications.',
     year: 'April 2023 — Jun 2024',
     sort_order: 1,
@@ -145,7 +145,7 @@ const cvExperience: ExperienceEntry[] = [
   {
     id: 'cv-ayisha-it-support',
     company: 'Ayisha Luqman & Co LLP',
-    designation: 'IT Support',
+    designation: 'Information Technology Technical Support',
     description: 'Resolved 100% of Level 1 and Level 2 hardware, software and network requests within 24 hours for a 10-person accounting team. Managed user accounts, access permissions and software installations, keeping downtime near zero during audit and tax filing periods.',
     year: 'May 2020 — Mar 2023',
     sort_order: 2,
@@ -586,7 +586,7 @@ function Portfolio() {
             <a className="button button-primary" href="#about">View profile <span aria-hidden="true">↘</span></a>
             <a
               className="button button-quiet"
-              href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/Software_Engineer_CV_Abdul_Muhsin_K.pdf'}
+              href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/CV__Abdul_Muhsin_K.pdf'}
               download
             >
               Download résumé <span aria-hidden="true">↓</span>
@@ -865,7 +865,7 @@ function Portfolio() {
           <span>© {new Date().getFullYear()} · A work in progress, by design.</span>
           {!staticDeployment && <a href="/blog">Blog</a>}
           {!staticDeployment && <a href="/dsa">Problem log</a>}
-          <a href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/Software_Engineer_CV_Abdul_Muhsin_K.pdf'}>Résumé ↓</a>
+          <a href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/CV__Abdul_Muhsin_K.pdf'}>Résumé ↓</a>
         </div>
       </footer>
       <button className={`scroll-top${showTop ? ' is-visible' : ''}`} type="button" aria-label="Scroll to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}>↑</button>
