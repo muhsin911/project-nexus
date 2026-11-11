@@ -10,7 +10,6 @@ from datetime import UTC, datetime
 from email.message import EmailMessage
 from pathlib import PurePosixPath
 from typing import Annotated
-from urllib.parse import quote
 
 import anyio
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
@@ -1142,12 +1141,14 @@ async def download_resume(db: DatabaseSession) -> Response:
     resume = await db.get(PortfolioResume, "current")
     if resume is None:
         raise HTTPException(status_code=404, detail="No resume has been uploaded.")
-    filename = quote(resume.filename, safe="")
     return Response(
         content=resume.content,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f"attachment; filename*=UTF-8''{filename}",
+            "Content-Disposition": (
+                'attachment; filename="Abdul_Muhsin_K_CV.pdf"; '
+                "filename*=UTF-8''Abdul_Muhsin_K_CV.pdf"
+            ),
             "X-Content-Type-Options": "nosniff",
         },
     )

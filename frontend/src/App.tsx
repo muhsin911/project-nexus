@@ -587,7 +587,7 @@ function Portfolio() {
             <a
               className="button button-quiet"
               href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/CV__Abdul_Muhsin_K.pdf'}
-              download
+              download="Abdul_Muhsin_K_CV.pdf"
             >
               Download résumé <span aria-hidden="true">↓</span>
             </a>
@@ -865,7 +865,12 @@ function Portfolio() {
           <span>© {new Date().getFullYear()} · A work in progress, by design.</span>
           {!staticDeployment && <a href="/blog">Blog</a>}
           {!staticDeployment && <a href="/dsa">Problem log</a>}
-          <a href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/CV__Abdul_Muhsin_K.pdf'}>Résumé ↓</a>
+          <a
+            href={resume.available ? publicApiUrl('/api/v1/portfolio/cv') : '/cv/CV__Abdul_Muhsin_K.pdf'}
+            download="Abdul_Muhsin_K_CV.pdf"
+          >
+            Résumé ↓
+          </a>
         </div>
       </footer>
       <button className={`scroll-top${showTop ? ' is-visible' : ''}`} type="button" aria-label="Scroll to top" onClick={() => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })}>↑</button>

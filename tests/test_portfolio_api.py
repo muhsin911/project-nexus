@@ -540,7 +540,12 @@ async def test_owner_auth_cms_dsa_categories_images_and_resume(
             headers={**headers, "Content-Type": "application/pdf"},
         )
         assert upload.status_code == 204
-        assert (await client.get(f"{base}/cv")).content == pdf
+        downloaded_resume = await client.get(f"{base}/cv")
+        assert downloaded_resume.content == pdf
+        assert downloaded_resume.headers["content-disposition"] == (
+            'attachment; filename="Abdul_Muhsin_K_CV.pdf"; '
+            "filename*=UTF-8''Abdul_Muhsin_K_CV.pdf"
+        )
 
         assert (
             await client.delete(f"{base}/dsa/{problem['id']}", headers=headers)
